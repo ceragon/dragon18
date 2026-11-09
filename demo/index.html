@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>软件 Demo</title>
+  <style>
+    html, body {
+      margin: 0;
+      background: #fff;
+      color: #000;
+    }
+    body {
+      font: 20px/1.6 "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
+      padding: 32px 24px 48px;
+      max-width: 40rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+    }
+    h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 24px 0 8px;
+    }
+    p {
+      margin: 0 0 12px;
+    }
+    figure {
+      margin: 0 0 16px;
+    }
+    figcaption {
+      margin-top: 8px;
+    }
+    .board {
+      width: 168px;
+      height: 260px;
+      border: 2px solid #000;
+      box-sizing: border-box;
+      padding: 18px 16px;
+    }
+    .board-screen {
+      height: 132px;
+      border: 2px solid #000;
+      box-sizing: border-box;
+    }
+    .board-button {
+      width: 28px;
+      height: 28px;
+      margin: 22px auto 0;
+      border: 2px solid #000;
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      background: #fff;
+      color: #000;
+      border: 1px solid #000;
+      font: inherit;
+      padding: 8px 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1>硬件示意</h1>
+      <figure>
+        <div class="board" aria-hidden="true">
+          <div class="board-screen"></div>
+          <div class="board-button"></div>
+        </div>
+        <figcaption>行空板</figcaption>
+      </figure>
+      <p>行空板将来负责拍照，并在板载屏上显示这道题。</p>
+      <button type="button">下一屏</button>
+    </section>
+    <section hidden>
+      <h1>演示题</h1>
+      <p>演示数据</p>
+      <p>一件上衣标价 200 元。商店先按标价打八折，再降价 20 元出售。售价是多少元？</p>
+      <p>学生的错法是先降价再打折，答成 (200−20)×0.8 = 144 元。</p>
+      <button type="button">下一屏</button>
+    </section>
+    <section hidden>
+      <h1>见题拆题</h1>
+      <p>演示数据</p>
+      <p>掌名是见龙在田。</p>
+      <p>题里两步的顺序是先打八折，再降价 20 元。</p>
+      <p>144 元的每一步乘法都对，但顺序反了。</p>
+      <p>先 200×0.8 = 160，再 160−20 = 140，售价是 140 元。</p>
+      <button type="button">下一屏</button>
+    </section>
+    <section hidden>
+      <h1>一错破一类</h1>
+      <p>演示数据</p>
+      <h2>训练题一</h2>
+      <p>一双鞋标价 250 元。商店先按标价打八折，再降价 40 元。售价是多少元？</p>
+      <p>正确答案是 160 元。</p>
+      <h2>训练题二</h2>
+      <p>一根绳子长 50 米。先用去它的一半，再用去 6 米。还剩多少米？</p>
+      <p>正确答案是 19 米。</p>
+    </section>
+  </main>
+  <script>
+    const screens = Array.from(document.querySelectorAll("main > section"));
+
+    function show(index) {
+      screens.forEach((section, i) => {
+        section.hidden = i !== index;
+      });
+    }
+
+    show(0);
+
+    document.body.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button || button.textContent !== "下一屏") return;
+      const current = screens.findIndex((section) => !section.hidden);
+      if (current < 0 || current >= screens.length - 1) return;
+      show(current + 1);
+    });
+  </script>
+</body>
+</html>
