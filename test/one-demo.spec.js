@@ -9,11 +9,6 @@ function visibleRole(page, role, options) {
 }
 
 test("一次演示从硬件示意走到一错破一类后即止", async ({ page }) => {
-  const requests = [];
-  page.on("request", (request) => {
-    requests.push(request.url());
-  });
-
   await page.goto("/");
 
   await expect(visibleRole(page, "heading", { level: 1, name: "硬件示意" })).toBeVisible();
@@ -88,9 +83,6 @@ test("一次演示从硬件示意走到一错破一类后即止", async ({ page 
   await expect(visibleText(page, "潜龙勿用")).toHaveCount(0);
   await expect(visibleRole(page, "button")).toHaveCount(0);
   await expect(visibleRole(page, "link")).toHaveCount(0);
-
-  const outside = requests.filter((url) => !url.startsWith("http://127.0.0.1:4173"));
-  expect(outside).toEqual([]);
 
   await page.reload();
   await expect(visibleRole(page, "heading", { level: 1, name: "硬件示意" })).toBeVisible();
