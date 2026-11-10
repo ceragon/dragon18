@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE · 视觉风格与动效语言(可丢弃)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+PROTOTYPE, throwaway. 问题:降题十八掌 Demo 的长相与动效是什么样?
+三个结构不同的方向,同一份故事线与演示数据,1920×1080 舞台自动缩放。
+  ?variant=A  墨卷:一幅横向展开的水墨长卷,镜头在画上平移
+  ?variant=B  擂台:暗场聚光,十八掌位圆环常驻,镜头推拉
+  ?variant=C  图解:亮色手册,左侧六段导轨,把题面拆成可移动的条件片
+其他参数:&beat=0..7 直接跳到某一拍;&auto=1 自动演示。键盘:1/2/3 换方向,←/→ 前后拍,空格 自动/手动。
+招式体系仍待孩子确认,所有文案均为演示数据或草稿,不是最终录屏内容。
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#111;overflow:hidden;font-family:"PingFang SC","Hiragino Sans GB",sans-serif}
+#vp{position:fixed;left:0;top:0;right:0;bottom:56px;display:grid;place-items:center;overflow:hidden}
+#scaler{width:1920px;height:1080px;flex:none;transform-origin:center center}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+
+/* ---------- prototype chrome (not part of the design) ---------- */
+#chrome{position:fixed;left:0;right:0;bottom:0;height:56px;background:#17171c;color:#ddd;display:flex;align-items:center;justify-content:center;gap:22px;font-size:14px;z-index:99;border-top:1px solid #333}
+#chrome .grp{display:flex;align-items:center;gap:8px}
+#chrome button{padding:6px 12px;border-radius:999px;background:#2a2a33;color:#eee}
+#chrome button:hover{background:#3a3a46}
+#chrome button:disabled{opacity:.35;cursor:not-allowed}
+#chrome .vname{min-width:92px;text-align:center;font-weight:600;color:#fff}
+#chrome .dots{display:flex;gap:6px}
+#chrome .dots i{width:9px;height:9px;border-radius:50%;background:#444;cursor:pointer}
+#chrome .dots i.on{background:#ffd479}
+#chrome .dots i.cur{box-shadow:0 0 0 3px #ffd47955}
+#chrome #hint{color:#ffd479;min-width:120px}
+#chrome #autoBtn.on{background:#c0392b;color:#fff}
+
+/* ---------- shared pieces (engine-filled) ---------- */
+.opts{display:flex}
+.opt{text-align:left}
+.opt[disabled]{cursor:default}
+.fb{opacity:0;transition:opacity .4s}
+.fb.show{opacity:1}
+.num{font:inherit;outline:0}
+.preset{display:none}
+.stage[data-auto="1"] .preset{display:inline-block}
+.r{opacity:0}.r.in{opacity:1}
+</style>
+<style id="styleA">
+.vA{--paper:#ece2cb;--ink:#1d1a17;--ink2:#4a443c;--red:#b3261e;--gold:#a8821f;color:var(--ink);background:var(--paper);font-family:"Kaiti SC","STKaiti","Songti SC",serif}
+.vA .grain{position:absolute;inset:0;opacity:.5;mix-blend-mode:multiply;pointer-events:none;z-index:50;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .18  0 0 0 .5 0'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>")}
+.vA .vig{position:absolute;inset:0;pointer-events:none;z-index:49;background:radial-gradient(ellipse at center,transparent 55%,rgba(60,40,15,.35))}
+.vA .mist{position:absolute;left:-200px;bottom:0;width:4600px;height:560px;transition:transform 1.6s cubic-bezier(.7,0,.2,1)}
+.vA .mist.m1{transform:translateX(calc(var(--beat)*-220px));opacity:.5}
+.vA .mist.m2{transform:translateX(calc(var(--beat)*-120px));opacity:.35;bottom:-60px}
+.vA .sun{position:absolute;right:230px;top:120px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#c8362a 0 60%,#b3261e 62%,rgba(179,38,30,0) 72%);opacity:.55;filter:blur(1px);transition:transform 1.8s cubic-bezier(.7,0,.2,1);transform:translateX(calc(var(--beat)*-34px))}
+.vA .track{position:absolute;left:0;top:0;height:1080px;width:calc(8*1920px);display:flex;transform:translateX(calc(var(--beat)*-1920px));transition:transform 1.5s cubic-bezier(.75,0,.2,1)}
+.vA .sc{position:relative;width:1920px;height:1080px;flex:none;padding:150px 170px 120px}
+.vA .ink{clip-path:inset(0 0 100% 0);filter:blur(7px);opacity:0;transition:clip-path 1.5s cubic-bezier(.3,.6,.3,1) var(--d,0s),filter 1.5s var(--d,0s),opacity .6s var(--d,0s)}
+.vA .ink.in{clip-path:inset(0 0 0% 0);filter:none;opacity:1}
+.vA .fade{opacity:0;transform:translateY(22px);transition:opacity 1s var(--d,0s),transform 1.1s cubic-bezier(.2,.7,.2,1) var(--d,0s)}
+.vA .fade.in{opacity:1;transform:none}
+.vA .stamp{opacity:0;transform:scale(2.2) rotate(-14deg);transition:none}
+.vA .stamp.in{animation:stamp .55s cubic-bezier(.3,1.6,.5,1) var(--d,0s) forwards}
+@keyframes stamp{0%{opacity:0;transform:scale(2.4) rotate(-14deg)}55%{opacity:1;transform:scale(.92) rotate(-5deg)}100%{opacity:1;transform:scale(1) rotate(-5deg)}}
+.vA .seal{display:inline-grid;place-items:center;background:var(--red);color:#f6e7d0;border-radius:6px;padding:.18em .5em;font-size:26px;letter-spacing:.1em;box-shadow:inset 0 0 0 3px var(--red),inset 0 0 0 5px #f6e7d0aa}
+.vA .seal.ghost{background:none;color:var(--red);box-shadow:inset 0 0 0 2px var(--red);font-size:22px}
+.vA .tag{font:600 22px "PingFang SC",sans-serif;letter-spacing:.08em;color:var(--ink2);border:1.5px dashed var(--ink2);padding:2px 12px;border-radius:4px;display:inline-block}
+.vA .preset{font:600 20px "PingFang SC",sans-serif;color:var(--red);border:1.5px solid var(--red);padding:1px 10px;border-radius:4px;margin-left:14px}
+.vA h2{font-size:84px;font-weight:700;letter-spacing:.12em}
+.vA .kicker{font:600 26px "PingFang SC",sans-serif;letter-spacing:.35em;color:var(--red);margin-bottom:18px}
+.vA .title{writing-mode:vertical-rl;white-space:nowrap;font-size:150px;font-weight:700;letter-spacing:.06em;line-height:1;position:absolute;left:300px;top:110px;color:var(--ink)}
+.vA .title-sub{position:absolute;left:640px;top:170px;font-size:44px;letter-spacing:.3em;color:var(--ink2)}
+.vA .mission{position:absolute;left:640px;top:300px;font-size:150px;font-weight:700;letter-spacing:.1em}
+.vA .mission-tag{position:absolute;left:650px;top:540px}
+.vA .brush{position:absolute;height:12px;border-radius:12px;background:var(--ink);transform-origin:left;transform:scaleX(0);transition:transform 1.6s cubic-bezier(.3,.7,.2,1) var(--d,.6s)}
+.vA .brush.in{transform:scaleX(1)}
+.vA .slots{position:absolute;right:90px;bottom:44px;display:flex;gap:7px;z-index:20}
+.vA .slots i{width:34px;height:50px;border-radius:5px;display:grid;place-items:center;font:normal 12px "PingFang SC",sans-serif;color:#5f5646;border:1.5px dashed #5f564699;background:#ece2cbaa;writing-mode:vertical-rl;transition:all .8s}
+.vA .slots i.lit{background:var(--red);color:#f6e7d0;border:0;font:700 20px "Kaiti SC",serif;box-shadow:0 6px 18px #b3261e55}
+.vA .slots i.pulse{animation:pulseA 1.1s ease-out 2}
+@keyframes pulseA{0%{box-shadow:0 0 0 0 #b3261eaa}100%{box-shadow:0 0 0 26px #b3261e00}}
+.vA .slotcap{position:absolute;right:90px;bottom:104px;font:600 16px "PingFang SC",sans-serif;letter-spacing:.1em;color:var(--ink2);z-index:20}
+.vA .segnav{position:absolute;right:90px;top:70px;display:flex;gap:30px;z-index:20;font:600 20px "PingFang SC",sans-serif;letter-spacing:.15em;color:#8a7f6a}
+.vA .segnav span{position:relative;padding-top:20px;transition:color .6s}
+.vA .segnav span::before{content:"";position:absolute;left:50%;top:0;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#8a7f6a66;transition:all .6s}
+.vA .segnav span.on{color:var(--ink)}
+.vA .segnav span.on::before{background:var(--red);transform:scale(1.6)}
+.vA .tent{position:absolute;left:70px;bottom:40px;z-index:20;font:600 18px "PingFang SC",sans-serif;color:var(--ink2);letter-spacing:.1em}
+/* hardware */
+.vA .hw{position:absolute;left:170px;top:210px;display:flex;align-items:center;gap:70px}
+.vA .paper{width:360px;height:470px;background:#f6efdc;border:2px solid var(--ink);padding:36px 30px;box-shadow:12px 14px 0 #1d1a1722;transform:rotate(-3deg);position:relative;font-size:30px;line-height:1.8}
+.vA .paper::after{content:"";position:absolute;left:0;right:0;height:5px;background:var(--red);opacity:.0;top:0;box-shadow:0 0 20px var(--red);animation:scanA 2.6s ease-in-out infinite}
+.vA .sc.on .paper::after{opacity:.8}
+@keyframes scanA{0%{top:6%}50%{top:94%}100%{top:6%}}
+.vA .flow{width:260px;height:20px;position:relative}
+.vA .flow svg{position:absolute;inset:-40px 0 0 0;width:100%}
+.vA .flow path{stroke-dasharray:14 12;animation:dashA 1.1s linear infinite}
+@keyframes dashA{to{stroke-dashoffset:-26}}
+.vA .board{width:330px;height:540px}
+.vA .hwcap{position:absolute;left:170px;bottom:150px;font-size:44px;letter-spacing:.1em}
+/* problem */
+.vA .scroll{position:absolute;left:170px;top:240px;width:1140px;background:#f6efdc;border-top:16px solid #4b3220;border-bottom:16px solid #4b3220;padding:56px 70px;box-shadow:0 18px 40px #3b2a1a33;transform-origin:top;transform:scaleY(0);transition:transform 1.1s cubic-bezier(.3,.8,.2,1) .2s}
+.vA .scroll.in{transform:scaleY(1)}
+.vA .scroll .q{font-size:56px;line-height:1.7;letter-spacing:.04em}
+.vA .wrong{position:absolute;left:1360px;top:300px;width:400px;font-size:40px;line-height:1.7;color:var(--ink2)}
+.vA .wrong b{display:block;color:var(--red);font-size:64px;margin-top:8px}
+.vA .mark{position:absolute;left:1420px;top:560px}
+.vA .cap{position:absolute;left:170px;bottom:150px;font-size:34px;color:var(--ink2);letter-spacing:.06em}
+/* choices */
+.vA .optsA{position:absolute;left:170px;top:330px;right:170px;gap:34px}
+.vA .optsA.v{flex-direction:row}
+.vA .optsA .opt{flex:1;height:470px;background:#f6efdc;border:2px solid var(--ink);border-radius:8px;position:relative;display:grid;place-items:center;transition:transform .5s cubic-bezier(.2,.8,.2,1),background .6s,box-shadow .6s;box-shadow:0 10px 0 #1d1a1722}
+.vA .optsA .opt .k{position:absolute;left:18px;top:14px;font:600 22px "PingFang SC",sans-serif;color:#8a7f6a;font-style:normal}
+.vA .optsA .opt span{writing-mode:vertical-rl;white-space:nowrap;font-size:66px;font-weight:700;letter-spacing:.14em}
+.vA .optsA .opt:not([disabled]):hover{transform:translateY(-12px);box-shadow:0 22px 0 #1d1a1722}
+.vA .optsA .opt.ok{background:var(--ink);color:#f6efdc;transform:translateY(-16px)}
+.vA .optsA .opt.bad{background:#d9cdb2;color:#8a7f6a;animation:shakeA .5s}
+@keyframes shakeA{20%{transform:translateX(-12px)}50%{transform:translateX(10px)}80%{transform:translateX(-5px)}}
+.vA .optsA.h{flex-direction:column;top:300px;width:1050px;right:auto;gap:22px}
+.vA .optsA.h .opt{height:112px;display:flex;align-items:center;gap:26px;padding:0 36px;background:#f6efdc;border:2px solid var(--ink);border-radius:6px;transition:transform .4s,background .5s}
+.vA .optsA.h .opt .k{font:600 24px "PingFang SC",sans-serif;color:var(--red);font-style:normal}
+.vA .optsA.h .opt span{writing-mode:horizontal-tb;font-size:42px;letter-spacing:0}
+.vA .optsA.h .opt:not([disabled]):hover{transform:translateX(16px)}
+.vA .optsA.h .opt.ok{background:var(--ink);color:#f6efdc;transform:translateX(26px)}
+.vA .optsA.h .opt.bad{background:#d9cdb2;color:#8a7f6a;animation:shakeA .5s}
+.vA .optsA.c4 .opt{height:360px;border-radius:50%;flex:none;width:360px}
+.vA .optsA.c4{justify-content:space-between}
+.vA .optsA.c4 .opt span{writing-mode:horizontal-tb;font-size:78px;letter-spacing:.05em}
+.vA .optsA.c4 .opt .k{left:50%;transform:translateX(-50%);top:36px}
+.vA .fbA{position:absolute;left:170px;bottom:150px;width:1500px;font-size:38px;line-height:1.6;color:var(--ink2)}
+.vA .fbA.show.ok{color:var(--ink)}
+.vA .fbA b{color:var(--red);margin-right:12px}
+.vA .fbA.bad b{color:var(--ink2)}
+.vA .stampbox{position:absolute;right:190px;top:190px;width:220px;height:220px;display:grid;place-items:center;border:8px solid var(--red);color:var(--red);font-size:80px;font-weight:700;border-radius:14px;writing-mode:vertical-rl;letter-spacing:.1em;z-index:6;mix-blend-mode:multiply}
+.vA .ribbon{position:absolute;right:170px;top:210px;width:520px;font-size:40px;line-height:1.7;color:var(--ink2);border-right:6px solid var(--red);padding-right:28px;text-align:right}
+.vA .ribbon b{color:var(--red)}
+.vA .pbox{display:flex;align-items:center;gap:20px;position:absolute;left:170px;top:560px}
+.vA .pbox .num{width:300px;height:140px;border:3px solid var(--ink);background:#f6efdc;text-align:center;font:700 96px "Kaiti SC",serif;color:var(--ink)}
+.vA .pbox .unit{font-size:60px}
+.vA .pbox .go{background:var(--red);color:#f6e7d0;font-size:38px;padding:24px 40px;border-radius:6px;letter-spacing:.2em;box-shadow:0 8px 0 #7a1a14}
+.vA .pbox .go:active{transform:translateY(6px);box-shadow:0 2px 0 #7a1a14}
+.vA .q2{position:absolute;left:170px;top:240px;font-size:60px;line-height:1.7;width:1560px}
+/* card */
+.vA .hang{position:absolute;left:500px;top:130px;width:920px;height:880px}
+.vA .hang::before,.vA .hang::after{content:"";position:absolute;left:-30px;right:-30px;height:34px;background:#4b3220;border-radius:17px;box-shadow:0 6px 12px #0003;z-index:3}
+.vA .hang::before{top:0}.vA .hang::after{top:20px;transition:top 2s cubic-bezier(.5,0,.2,1) .3s}.vA .hang.in::after{top:790px}
+.vA .hang .face{position:absolute;left:0;right:0;top:20px;height:0;overflow:hidden;background:#f6efdc;transition:height 2s cubic-bezier(.5,0,.2,1) .3s;padding:0 80px;box-shadow:0 20px 60px #3b2a1a44}
+.vA .hang.in .face{height:790px}
+.vA .hang .face>div{padding-top:80px;width:760px}
+.vA .face h3{font-size:110px;letter-spacing:.2em;margin-bottom:6px}
+.vA .face dl{margin-top:26px;font-size:32px;line-height:1.55}
+.vA .face dt{font:600 20px "PingFang SC",sans-serif;letter-spacing:.3em;color:var(--red);margin-top:18px}
+.vA .face .tags{margin-top:20px;display:flex;gap:10px}
+.vA .face .seal{position:absolute;right:50px;top:90px;transform:rotate(-5deg);font-size:28px}
+</style>
+<style id="styleB">
+.vB{--bg:#0a0810;--gold:#e3b04b;--gold2:#8c6a22;--red:#d6402f;--tx:#f1e6d0;--dim:#8b8070;background:var(--bg);color:var(--tx);font-family:"Songti SC","STSong",serif}
+.vB .bgfx{position:absolute;inset:0;background:radial-gradient(ellipse 60% 70% at 30% 52%,#2a1620 0,#120c14 55%,#07060b 100%)}
+.vB .floor{position:absolute;left:-200px;right:-200px;bottom:-420px;height:900px;border-radius:50%;background:repeating-radial-gradient(circle at 50% 30%,#ffffff08 0 2px,transparent 2px 40px);transform:perspective(900px) rotateX(70deg);opacity:.7}
+.vB canvas{position:absolute;inset:0;pointer-events:none}
+.vB .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 3px,#0000000d 3px 4px);mix-blend-mode:multiply;z-index:40}
+.vB .spot{position:absolute;left:230px;top:-60px;width:760px;height:1200px;background:linear-gradient(180deg,#f3d49044,#f3d49000 85%);clip-path:polygon(35% 0,65% 0,100% 100%,0 100%);filter:blur(24px);opacity:.55;transition:opacity 1s,transform 1.2s;transform-origin:50% 0}
+.vB[data-beat="3"] .spot,.vB[data-beat="4"] .spot{opacity:.9}
+.vB .ringwrap{position:absolute;left:30px;top:150px;width:900px;height:900px;transition:transform 1.6s cubic-bezier(.7,0,.2,1)}
+.vB[data-beat="0"] .ringwrap{transform:translate(0,-60px) scale(1.04)}
+.vB[data-beat="1"] .ringwrap{transform:translate(-170px,60px) scale(.6)}
+.vB[data-beat="2"] .ringwrap{transform:translate(-120px,40px) scale(.74)}
+.vB[data-beat="3"] .ringwrap,.vB[data-beat="4"] .ringwrap{transform:translate(-30px,-10px) scale(.96)}
+.vB[data-beat="5"] .ringwrap,.vB[data-beat="6"] .ringwrap{transform:translate(-120px,40px) scale(.74)}
+.vB[data-beat="7"] .ringwrap{transform:translate(-170px,60px) scale(.6)}
+.vB .ring{width:900px;height:900px}
+.vB .ring .rot{transform-origin:450px 450px;transition:transform 1.8s cubic-bezier(.6,0,.2,1)}
+.vB[data-beat="0"] .rot{animation:spinB 90s linear infinite}
+@keyframes spinB{to{transform:rotate(360deg)}}
+.vB[data-beat="3"] .rot,.vB[data-beat="4"] .rot,.vB[data-beat="5"] .rot,.vB[data-beat="6"] .rot,.vB[data-beat="7"] .rot,.vB[data-beat="2"] .rot{transform:rotate(-20deg)}
+.vB .slot circle{fill:#15101b;stroke:#4c4256;stroke-width:2;transition:all .8s}
+.vB .slot text{fill:#6a5f78;font:600 22px "PingFang SC",sans-serif;text-anchor:middle;dominant-baseline:central}
+.vB .slot.lit circle{fill:#3a1710;stroke:var(--gold);stroke-width:3;filter:drop-shadow(0 0 14px #e3b04bcc)}
+.vB .slot.lit text{fill:var(--gold);font:700 48px "Songti SC",serif}
+.vB .slot.fire circle{animation:fireB 1.3s ease-out 1}
+@keyframes fireB{0%{filter:drop-shadow(0 0 0 #fff)}30%{filter:drop-shadow(0 0 60px #ffdf8a)}100%{filter:drop-shadow(0 0 14px #e3b04bcc)}}
+.vB .halo{fill:none;stroke:var(--gold);stroke-width:2;opacity:0}
+.vB .halo.go{animation:haloB 1.6s ease-out}
+@keyframes haloB{0%{opacity:.9;r:60;stroke-width:6}100%{opacity:0;r:420;stroke-width:1}}
+.vB .ringcap{position:absolute;left:0;right:0;bottom:-6px;text-align:center;font:20px "PingFang SC",sans-serif;color:var(--dim);letter-spacing:.2em;transition:opacity .8s;opacity:0}
+.vB[data-beat="0"] .ringcap{opacity:1}
+.vB .panel{position:absolute;left:960px;top:0;width:900px;height:1080px}
+.vB .sc{position:absolute;inset:0;padding:120px 0 0;opacity:0;visibility:hidden;transform:translateX(120px);transition:opacity .6s,transform 1s cubic-bezier(.2,.8,.2,1),visibility 0s .8s}
+.vB .sc.in{opacity:1;visibility:visible;transform:none;transition:opacity .9s .5s,transform 1.1s cubic-bezier(.2,.8,.2,1) .5s}
+.vB .sc>.r{transform:translateX(60px);transition:opacity .8s var(--d,0s),transform 1s cubic-bezier(.2,.8,.2,1) var(--d,0s)}
+.vB .sc.in>.r,.vB .r.in{transform:none;opacity:1}
+.vB .hdr{position:absolute;left:0;right:0;top:0;height:92px;display:flex;align-items:center;justify-content:space-between;padding:0 70px;z-index:30;font:600 20px "PingFang SC",sans-serif;letter-spacing:.2em;color:var(--dim)}
+.vB .hdr .t{color:var(--gold);font:700 28px "Songti SC",serif;letter-spacing:.3em}
+.vB .hdr nav{display:flex;gap:6px}
+.vB .hdr nav span{padding:8px 18px;border:1px solid #3a3144;border-radius:2px;transition:all .6s;position:relative;overflow:hidden}
+.vB .hdr nav span.on{color:#12090a;background:var(--gold);border-color:var(--gold);box-shadow:0 0 22px #e3b04b88}
+.vB .hdr nav span.past{color:var(--gold);border-color:var(--gold2)}
+.vB .frame{position:relative;padding:36px 44px;background:linear-gradient(135deg,#1b1420cc,#120d17cc);border:1px solid #3c3045}
+.vB .frame::before,.vB .frame::after{content:"";position:absolute;width:26px;height:26px;border:3px solid var(--gold)}
+.vB .frame::before{left:-4px;top:-4px;border-right:0;border-bottom:0}
+.vB .frame::after{right:-4px;bottom:-4px;border-left:0;border-top:0}
+.vB .kick{font:600 22px "PingFang SC",sans-serif;letter-spacing:.4em;color:var(--red);margin-bottom:16px}
+.vB h2{font-size:78px;letter-spacing:.14em;line-height:1.15}
+.vB .big{font-size:150px;font-weight:900;letter-spacing:.12em;line-height:1.05;white-space:nowrap}.vB .big span{background:linear-gradient(180deg,#fff2c9,#e3b04b 55%,#a2701d);-webkit-background-clip:text;color:transparent}
+.vB .strike span{display:inline-block;opacity:0;transform:translateY(-90px) scale(1.6);filter:blur(10px)}
+.vB .strike.in span{animation:strikeB .7s cubic-bezier(.2,1.3,.4,1) forwards;animation-delay:calc(.6s + var(--i)*.14s)}
+@keyframes strikeB{0%{opacity:0;transform:translateY(-90px) scale(1.7);filter:blur(10px)}70%{opacity:1;transform:translateY(6px) scale(.97);filter:blur(0)}100%{opacity:1;transform:none;filter:blur(0)}}
+.vB .tag{font:600 20px "PingFang SC",sans-serif;letter-spacing:.14em;color:var(--gold);border:1px solid var(--gold2);padding:2px 12px;display:inline-block}
+.vB .preset{font:600 18px "PingFang SC",sans-serif;color:#12090a;background:var(--red);padding:2px 10px;margin-left:14px;letter-spacing:.1em}
+.vB .mission{font-size:92px;font-weight:700;letter-spacing:.12em;margin:34px 0 22px}
+.vB .tent{position:absolute;left:46px;bottom:34px;z-index:41;font:600 18px "PingFang SC",sans-serif;color:var(--dim);letter-spacing:.14em}
+.vB .q{font-size:54px;line-height:1.65}
+.vB .q em{font-style:normal;color:var(--gold);border-bottom:3px solid var(--gold2)}
+.vB .wrongbox{margin-top:30px;padding:22px 30px;border-left:6px solid var(--red);background:#2a0f10aa;font-size:36px;line-height:1.6}
+.vB .wrongbox b{color:var(--red);font-size:26px;letter-spacing:.2em;display:block;font-family:"PingFang SC"}
+.vB .optsB{flex-direction:column;gap:18px;margin-top:28px}
+.vB .optsB .opt{position:relative;padding:24px 34px 24px 100px;background:#17111c;border:1px solid #4c4256;transition:all .5s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+.vB .optsB .opt .k{position:absolute;left:0;top:0;bottom:0;width:70px;display:grid;place-items:center;background:#241a2b;font:700 28px "PingFang SC",sans-serif;font-style:normal;color:var(--gold)}
+.vB .optsB .opt span{font-size:44px;letter-spacing:.06em}
+.vB .optsB .opt:not([disabled]):hover{border-color:var(--gold);transform:translateX(-14px);box-shadow:0 0 30px #e3b04b33}
+.vB .optsB .opt.ok{background:linear-gradient(90deg,#4a2a10,#2a1a12);border-color:var(--gold);box-shadow:0 0 50px #e3b04b66;transform:translateX(-22px)}
+.vB .optsB .opt.ok .k{background:var(--gold);color:#12090a}
+.vB .optsB .opt.ok::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#fff7 50%,transparent 70%);transform:translateX(-120%);animation:sweepB 1s .1s forwards}
+@keyframes sweepB{to{transform:translateX(120%)}}
+.vB .optsB .opt.bad{opacity:.45;border-color:var(--red);animation:shakeB .45s}
+@keyframes shakeB{20%{transform:translateX(-16px)}50%{transform:translateX(14px)}80%{transform:translateX(-6px)}}
+.vB .optsB.g2{flex-direction:row;flex-wrap:wrap}
+.vB .optsB.g2 .opt{width:calc(50% - 9px)}
+.vB .fbB{margin-top:26px;min-height:150px;font-size:34px;line-height:1.6;padding:18px 26px;border-left:6px solid var(--dim);background:#ffffff08}
+.vB .fbB.ok{border-color:var(--gold)}.vB .fbB.bad{border-color:var(--red)}
+.vB .fbB b{color:var(--gold);margin-right:10px}.vB .fbB.bad b{color:var(--red)}
+.vB .shake{animation:camB .5s}
+@keyframes camB{20%{transform:translate(-8px,4px)}50%{transform:translate(8px,-4px)}80%{transform:translate(-3px,2px)}}
+.vB .hwpanel{display:flex;gap:46px;align-items:center}
+.vB .board{width:300px;height:490px;filter:drop-shadow(0 0 30px #e3b04b55)}
+.vB .hwtxt{font-size:46px;line-height:1.6}
+.vB .beam{height:6px;width:100%;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:16px 0;animation:beamB 2s ease-in-out infinite}
+@keyframes beamB{0%,100%{opacity:.2;transform:scaleX(.3)}50%{opacity:1;transform:scaleX(1)}}
+.vB .pbox{display:flex;gap:18px;align-items:center;margin-top:30px}
+.vB .pbox .num{width:300px;height:120px;background:#17111c;border:2px solid var(--gold);color:var(--gold);font:900 80px "Songti SC",serif;text-align:center}
+.vB .pbox .unit{font-size:54px}
+.vB .pbox .go{background:var(--gold);color:#12090a;font:700 32px "PingFang SC";padding:26px 44px;letter-spacing:.2em;box-shadow:0 0 30px #e3b04b66}
+.vB .card{border:2px solid var(--gold);background:linear-gradient(160deg,#2a1b15,#14100f);padding:40px 56px 40px;position:relative;box-shadow:0 0 80px #e3b04b33;transform-style:preserve-3d}
+.vB .card h3{font-size:100px;letter-spacing:.2em;color:var(--gold)}
+.vB .card dl{font-size:32px;line-height:1.55;margin-top:6px}
+.vB .card dt{font:600 18px "PingFang SC",sans-serif;letter-spacing:.3em;color:var(--red);margin-top:14px}
+.vB .card .tags{margin-top:16px;display:flex;gap:10px}
+.vB .sc.in .card{animation:cardB 1.6s cubic-bezier(.2,.8,.2,1) .5s both}
+@keyframes cardB{0%{transform:perspective(1200px) rotateY(80deg) scale(.8);opacity:0}100%{transform:perspective(1200px) rotateY(0) scale(1);opacity:1}}
+.vB .hint{font-size:26px;color:var(--dim);margin-top:16px;font-family:"PingFang SC"}
+</style>
+<style id="styleC">
+.vC{--bg:#f4f1ea;--card:#fffdf8;--navy:#14213d;--mut:#6b7385;--line:#d9d3c5;--coral:#ef5b3f;--teal:#0f8b8d;--sun:#ffc43d;background:var(--bg);color:var(--navy);font-family:"PingFang SC","Hiragino Sans GB",sans-serif}
+.vC::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:60px 60px;opacity:.35;mask-image:radial-gradient(ellipse at 60% 50%,#000 20%,transparent 80%)}
+.vC .rail{position:absolute;left:0;top:0;bottom:0;width:380px;background:var(--navy);color:#e9e4d6;padding:80px 50px;z-index:10}
+.vC .rail .logo{font:900 44px "Songti SC",serif;letter-spacing:.14em;line-height:1.3;color:#fff}
+.vC .rail .logo small{display:block;font:600 16px "PingFang SC";letter-spacing:.3em;color:#8d97b3;margin-top:10px}
+.vC .rail ol{list-style:none;margin-top:90px;position:relative}
+.vC .rail ol::before{content:"";position:absolute;left:21px;top:20px;bottom:20px;width:3px;background:#2d3b61}
+.vC .rail .prog{position:absolute;left:21px;top:20px;width:3px;background:var(--sun);height:calc(var(--seg)*86px);transition:height 1.2s cubic-bezier(.7,0,.2,1)}
+.vC .rail li{position:relative;height:86px;display:flex;align-items:flex-start;gap:26px;font-size:30px;color:#8d97b3;transition:color .5s}
+.vC .rail li i{flex:none;width:44px;height:44px;border-radius:50%;background:var(--navy);border:3px solid #2d3b61;display:grid;place-items:center;font:700 18px "PingFang SC";font-style:normal;z-index:1;transition:all .6s}
+.vC .rail li span{padding-top:5px}
+.vC .rail li.past{color:#e9e4d6}
+.vC .rail li.past i{background:var(--sun);border-color:var(--sun);color:var(--navy)}
+.vC .rail li.on{color:#fff;font-weight:700}
+.vC .rail li.on i{background:#fff;border-color:var(--sun);color:var(--navy);transform:scale(1.2);box-shadow:0 0 0 8px #ffc43d44}
+.vC .tent{position:absolute;left:50px;bottom:40px;z-index:11;font:600 16px "PingFang SC";color:#8d97b3;letter-spacing:.12em;line-height:1.7}
+.vC .main{position:absolute;left:380px;top:0;right:0;bottom:0}
+.vC .sc{position:absolute;inset:0;padding:90px 110px;opacity:0;visibility:hidden;transform:translateY(40px);transition:opacity .5s,transform .8s cubic-bezier(.2,.8,.2,1),visibility 0s .6s}
+.vC .sc.in{opacity:1;visibility:visible;transform:none;transition:opacity .7s .35s,transform .9s cubic-bezier(.2,.8,.2,1) .35s}
+.vC .r{opacity:0;transform:translateY(26px);transition:opacity .6s var(--d,0s),transform .8s cubic-bezier(.2,1.1,.3,1) var(--d,0s)}
+.vC .r.in{opacity:1;transform:none}
+.vC .num-big{position:absolute;right:90px;top:20px;font:900 380px "Songti SC",serif;color:#14213d0d;letter-spacing:-.04em;pointer-events:none}
+.vC .kick{font:700 22px "PingFang SC";letter-spacing:.3em;color:var(--coral);margin-bottom:14px}
+.vC h2{font:900 88px "Songti SC",serif;letter-spacing:.06em;line-height:1.15}
+.vC .lead{font-size:34px;color:var(--mut);margin-top:22px;line-height:1.6;max-width:1100px}
+.vC .tag{font:700 18px "PingFang SC";letter-spacing:.12em;color:var(--teal);background:#0f8b8d18;border:1.5px solid var(--teal);padding:3px 12px;border-radius:99px;display:inline-block}
+.vC .preset{font:700 17px "PingFang SC";color:#fff;background:var(--coral);padding:3px 12px;border-radius:99px;margin-left:14px}
+.vC .mission{font:900 170px "Songti SC",serif;letter-spacing:.06em;margin:40px 0 20px;line-height:1.1}
+.vC .mission .hl{background:linear-gradient(transparent 62%,var(--sun) 62%);background-size:0% 100%;background-repeat:no-repeat;transition:background-size 1.1s cubic-bezier(.6,0,.2,1) 1s}
+.vC .in .hl,.vC .hl.in{background-size:100% 100%}
+.vC .grid18{display:grid;grid-template-columns:repeat(9,86px);gap:12px;margin-top:50px}
+.vC .grid18 i{height:86px;border-radius:14px;border:2px dashed var(--line);display:grid;place-items:center;font:600 16px "PingFang SC";font-style:normal;color:#a7a190;background:#fffdf866}
+.vC .grid18 i.lit{background:var(--navy);border:0;color:#fff;font:900 34px "Songti SC";box-shadow:0 10px 0 #14213d33}
+.vC .hwrow{display:flex;gap:90px;align-items:center;margin-top:50px}
+.vC .board{width:340px;height:555px}
+.vC .hwnote{position:relative;font-size:40px;line-height:1.7;max-width:620px}
+.vC .hwnote .callout{margin-top:26px;border:2.5px dashed var(--coral);padding:20px 26px;border-radius:14px;color:var(--coral);font-weight:700;font-size:34px}
+.vC .shot{position:absolute;left:60px;top:150px;width:340px;height:440px}
+.vC .chips{display:flex;gap:18px;flex-wrap:wrap;margin-top:34px}
+.vC .chip{background:var(--card);border:2.5px solid var(--navy);border-radius:16px;padding:20px 28px;font-size:46px;font-weight:600;box-shadow:0 8px 0 var(--navy);position:relative}
+.vC .chip b{position:absolute;left:-14px;top:-18px;width:38px;height:38px;border-radius:50%;background:var(--sun);border:2.5px solid var(--navy);font:900 20px "PingFang SC";display:grid;place-items:center}
+.vC .chip.ck::after{content:"✓";position:absolute;right:-12px;bottom:-18px;width:38px;height:38px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font:700 22px "PingFang SC";animation:popC .5s cubic-bezier(.3,1.8,.5,1) both}
+@keyframes popC{from{transform:scale(0)}to{transform:scale(1)}}
+.vC .lanes{margin-top:34px;display:flex;flex-direction:column;gap:14px}
+.vC .lane{display:flex;align-items:center;gap:0}
+.vC .lane .lab{width:150px;font:700 22px "PingFang SC";color:var(--mut);letter-spacing:.12em}
+.vC .lane .n{min-width:130px;height:80px;border-radius:40px;display:grid;place-items:center;font:900 44px "Songti SC";background:var(--card);border:2.5px solid var(--navy)}
+.vC .lane .ar{width:210px;height:80px;position:relative}
+.vC .lane .ar::before{content:"";position:absolute;left:0;top:39px;height:3px;width:calc(100% - 14px);background:var(--navy);transform-origin:left;transform:scaleX(0);transition:transform .7s cubic-bezier(.6,0,.2,1) var(--d,0s)}
+.vC .lane .ar::after{content:"";position:absolute;right:0;top:32px;border-left:14px solid var(--navy);border-top:8px solid transparent;border-bottom:8px solid transparent;opacity:0;transition:opacity .2s calc(var(--d,0s) + .6s)}
+.vC .lane .ar.in::before{transform:scaleX(1)}.vC .lane .ar.in::after{opacity:1}
+.vC .lane .ar em{position:absolute;left:0;right:0;top:4px;text-align:center;font:700 26px "PingFang SC";font-style:normal}
+.vC .lane.bad .n.end{background:var(--coral);border-color:var(--coral);color:#fff}
+.vC .lane.good .n.end{background:var(--teal);border-color:var(--teal);color:#fff}
+.vC .lane .n.pend{opacity:0;transform:scale(.5);transition:all .6s cubic-bezier(.3,1.6,.5,1) var(--d,0s)}
+.vC .lane .n.pend.in{opacity:1;transform:none}
+.vC .swapnote{font-size:34px;margin-top:20px;color:var(--navy);font-weight:600}
+.vC .swapnote b{color:var(--coral)}
+.vC .bottom{position:absolute;left:110px;right:110px;bottom:70px}
+.vC .optsC{gap:20px;flex-wrap:wrap}
+.vC .optsC .opt{flex:1;min-width:300px;background:var(--card);border:2.5px solid var(--navy);border-radius:18px;padding:22px 26px;display:flex;align-items:center;gap:20px;box-shadow:0 8px 0 var(--navy);transition:transform .25s cubic-bezier(.3,1.6,.5,1),box-shadow .25s,background .3s}
+.vC .optsC .opt .k{flex:none;width:46px;height:46px;border-radius:50%;background:var(--sun);display:grid;place-items:center;font:900 22px "PingFang SC";font-style:normal}
+.vC .optsC .opt span{font-size:38px;font-weight:700}
+.vC .optsC .opt:not([disabled]):hover{transform:translateY(-8px);box-shadow:0 16px 0 var(--navy)}
+.vC .optsC .opt:not([disabled]):active{transform:translateY(6px);box-shadow:0 2px 0 var(--navy)}
+.vC .optsC .opt.ok{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 8px 0 #0a5c5d;animation:hopC .6s}
+@keyframes hopC{30%{transform:translateY(-26px) scale(1.04)}60%{transform:translateY(0) scale(.98)}}
+.vC .optsC .opt.bad{background:#fde3dc;border-color:var(--coral);box-shadow:0 8px 0 var(--coral);animation:shakeC .45s}
+@keyframes shakeC{20%{transform:translateX(-14px)}50%{transform:translateX(12px)}80%{transform:translateX(-5px)}}
+.vC .optsC.col{flex-direction:column}
+.vC .optsC.col .opt{flex:none}
+.vC .fbC{margin-top:26px;font-size:32px;line-height:1.6;min-height:104px;padding-left:22px;border-left:8px solid var(--line)}
+.vC .fbC.ok{border-color:var(--teal)}.vC .fbC.bad{border-color:var(--coral)}
+.vC .fbC b{margin-right:10px;color:var(--teal)}.vC .fbC.bad b{color:var(--coral)}
+.vC .pbox{display:flex;gap:18px;align-items:center}
+.vC .pbox .num{width:260px;height:110px;border-radius:20px;border:3px solid var(--navy);background:var(--card);text-align:center;font:900 70px "Songti SC";color:var(--navy);box-shadow:0 8px 0 var(--navy)}
+.vC .pbox .unit{font-size:48px;font-weight:700}
+.vC .pbox .go{background:var(--coral);color:#fff;font:700 32px "PingFang SC";padding:26px 44px;border-radius:20px;box-shadow:0 8px 0 #a6361f}
+.vC .pbox .go:active{transform:translateY(6px);box-shadow:0 2px 0 #a6361f}
+.vC .stage-card{perspective:1800px;margin-top:20px}
+.vC .flip{width:1260px;height:720px;position:relative;transform-style:preserve-3d;transform:rotateY(180deg);transition:transform 1.4s cubic-bezier(.3,1.2,.4,1) .4s}
+.vC .flip.in{transform:rotateY(0)}
+.vC .flip>div{position:absolute;inset:0;backface-visibility:hidden;border-radius:30px;padding:46px 64px;border:3px solid var(--navy)}
+.vC .flip .front{background:var(--card);box-shadow:0 14px 0 var(--navy)}
+.vC .flip .back{background:var(--navy);transform:rotateY(180deg);display:grid;place-items:center;color:var(--sun);font:900 120px "Songti SC"}
+.vC .front h3{font:900 108px "Songti SC";letter-spacing:.16em}
+.vC .front .cols{display:grid;grid-template-columns:1fr 1fr;gap:34px 56px;margin-top:34px}
+.vC .front dt{font:700 18px "PingFang SC";letter-spacing:.3em;color:var(--coral);margin-bottom:6px}
+.vC .front dd{font-size:40px;line-height:1.5}
+.vC .front .tags{position:absolute;left:64px;bottom:40px;display:flex;gap:10px}
+.vC .front .tt{position:absolute;right:64px;top:50px}
+.vC .q2c{font-size:46px;line-height:1.6;max-width:1150px;margin-top:30px}
+</style>
+</head>
+<body>
+<div id="vp"><div id="scaler"><div id="stage" class="stage"></div></div></div>
+<div id="chrome">
+  <div class="grp"><button id="vPrev">◀</button><span class="vname" id="vName"></span><button id="vNext">▶</button></div>
+  <div class="grp dots" id="dots"></div>
+  <div class="grp"><button id="bPrev">上一步</button><button id="bNext">下一步</button><button id="autoBtn">▶ 自动演示</button><span id="hint"></span></div>
+</div>
+<script>
+/* ================= shared story + engine ================= */
+const SEGS=['使命','硬件示意','见题','拆题','练习','速查卡'];
+const SEG=[0,1,2,2,3,4,4,5], NB=8;
+const CH={
+ 3:{opts:['潜龙勿用','见龙在田','暂无对应的掌'],ok:1,
+    fb:['再看一遍:按字面展开,会缺一个量吗?200 元、八折、20 元都写明了,不缺。','见龙在田。题面把条件和顺序都写明了,按写明的顺序展开就行。','这道题能用已有的掌,不需要「暂无对应的掌」。']},
+ 4:{opts:['计算','方法','审题','概念'],ok:2,
+    fb:['不是计算。180×0.8=144 这步算术是对的。','不是方法。他没有改走别的做法,只是把顺序弄反了。','审题。题面写的是「先打八折,再降 20 元」,他读成了先降 20 元再打八折。','不是概念。「八折」就是乘 0.8,这个意思他用对了。']},
+ 5:{opts:['先打八折,再降 40 元:160 元','先降 40 元,再打八折:168 元','只打八折,不再降价:200 元'],ok:0,
+    fb:['对。250×0.8=200,200−40=160,顺序和题面一致。','这是上一题的老毛病:把「先、再」读反了。','漏掉了「再降 40 元」这个已经写明的条件。']},
+ 6:{input:true,ok:'19',unit:'米',
+    fb:['对。先用去一半:50÷2=25,再用去 6 米:25−6=19 米。','再看一遍:先用去一半,剩 25 米;再用去 6 米。']}
+};
+const AUTO=[ {d:4800},{d:9500},{d:6500},
+ {d:3800,picks:[1],gap:4200},{d:3800,picks:[2],gap:4200},
+ {d:3600,picks:[2,0],gap:3200},{d:3600,type:'19',gap:4200},{d:9000} ];
+const q=(s,r=document)=>r.querySelector(s), qa=(s,r=document)=>[...r.querySelectorAll(s)];
+const stage=q('#stage');
+let beat=0, done={}, token=0, auto=false, V='A';
+
+const boardSVG=(c)=>`<svg class="board" viewBox="0 0 330 540" fill="none"><rect x="12" y="12" width="306" height="516" rx="38" fill="${c.body}" stroke="${c.line}" stroke-width="5"/><rect x="42" y="58" width="246" height="326" rx="10" fill="${c.screen}" stroke="${c.line}" stroke-width="3"/><g stroke="${c.line}" stroke-width="3" stroke-linecap="round" opacity=".6"><path d="M70 120h190M70 160h150M70 200h170M70 240h120"/></g><circle cx="165" cy="34" r="6" fill="${c.line}"/><circle cx="104" cy="450" r="26" fill="${c.btn}" stroke="${c.line}" stroke-width="4"/><circle cx="226" cy="450" r="26" fill="${c.btn}" stroke="${c.line}" stroke-width="4"/><text x="104" y="458" text-anchor="middle" font-size="24" font-weight="700" fill="${c.line}" font-family="PingFang SC">A</text><text x="226" y="458" text-anchor="middle" font-size="24" font-weight="700" fill="${c.line}" font-family="PingFang SC">B</text><text x="165" y="226" text-anchor="middle" font-size="22" fill="${c.line}" opacity=".7" font-family="PingFang SC">此处将显示题目</text></svg>`;
+
+function fillInteractive(){
+  qa('[data-opts]',stage).forEach(c=>{const b=+c.dataset.opts,ch=CH[b];
+    c.innerHTML=ch.opts.map((o,i)=>`<button class="opt" data-b="${b}" data-i="${i}"><i class="k">${'ABCD'[i]}</i><span>${o}</span></button>`).join('')});
+  qa('[data-input]',stage).forEach(c=>{const b=+c.dataset.input;
+    c.innerHTML=`<input class="num" data-b="${b}" inputmode="numeric" maxlength="3" placeholder="?"><span class="unit">${CH[b].unit}</span><button class="go" data-b="${b}">提交</button>`});
+}
+function setFb(b,ok,txt,tag){
+  qa(`[data-fb="${b}"]`,stage).forEach(f=>{f.classList.remove('ok','bad');f.classList.add('show',ok?'ok':'bad');
+    f.innerHTML=`<b>${ok?'对':'再想想'}</b>${txt}${stage.dataset.auto==='1'?'<span class="preset">预设演示</span>':''}`})
+}
+function pick(b,i){
+  if(done[b])return; const ch=CH[b]; const ok=i===ch.ok;
+  const btn=q(`.opt[data-b="${b}"][data-i="${i}"]`,stage);
+  btn.classList.add(ok?'ok':'bad'); btn.disabled=true;
+  setFb(b,ok,ch.fb[i]);
+  if(ok){done[b]=true;qa(`[data-opts="${b}"] .opt`,stage).forEach(o=>o.disabled=true);fx(b,true)}else fx(b,false);
+  sync();updateChrome();
+}
+function submit(b,val){
+  if(done[b])return; const ch=CH[b]; const inp=q(`.num[data-b="${b}"]`,stage); inp.value=val??inp.value;
+  const ok=inp.value.trim()===ch.ok; setFb(b,ok,ch.fb[ok?0:1]);
+  if(ok){done[b]=true;inp.disabled=true;q(`.go[data-b="${b}"]`,stage).disabled=true;fx(b,true)}else fx(b,false);
+  sync();updateChrome();
+}
+function fx(b,ok){ /* hooks for per-variant impact effects */
+  stage.classList.remove('shake'); void stage.offsetWidth; if(!ok&&V==='B')stage.classList.add('shake');
+  if(ok&&V==='B'){const h=q('.halo');if(h){h.classList.remove('go');void h.getBoundingClientRect();h.classList.add('go')} const s=qa('.vB .slot.lit')[1];if(s&&(b===3)){s.classList.remove('fire');void s.getBoundingClientRect();s.classList.add('fire')}}
+  if(ok&&V==='A'&&b===3){const s=qa('.vA .slots i.lit')[1];if(s){s.classList.add('pulse')}}
+}
+function sync(){
+  qa('[data-from]',stage).forEach(e=>{const f=+e.dataset.from,t=e.dataset.to==null?99:+e.dataset.to;e.classList.toggle('in',beat>=f&&beat<=t)});
+  qa('[data-after]',stage).forEach(e=>{const a=+e.dataset.after;e.classList.toggle('in',!!done[a]&&beat>=a)});
+  qa('[data-seg]',stage).forEach(e=>{const s=+e.dataset.seg;e.classList.toggle('on',SEG[beat]===s);e.classList.toggle('past',SEG[beat]>s)});
+}
+function go(n){
+  beat=Math.max(0,Math.min(NB-1,n)); stage.dataset.beat=beat; stage.style.setProperty('--beat',beat); stage.style.setProperty('--seg',SEG[beat]);
+  sync();updateChrome();
+}
+function resetState(){done={};qa('.opt,.num,.go',stage).forEach(e=>{e.classList.remove('ok','bad');e.disabled=false;if(e.matches('.num'))e.value=''});qa('.fb',stage).forEach(f=>{f.classList.remove('show','ok','bad');f.innerHTML=''})}
+const sleep=(ms,t)=>new Promise(r=>setTimeout(()=>r(t===token),ms));
+async function runAuto(){
+  const t=++token; auto=true; stage.dataset.auto='1'; resetState(); go(0); updateChrome();
+  for(let b=0;b<NB;b++){
+    go(b); const a=AUTO[b];
+    if(!await sleep(a.d,t))return;
+    if(a.picks){for(const i of a.picks){pick(b,i);if(!await sleep(a.gap,t))return}}
+    if(a.type){const inp=q(`.num[data-b="${b}"]`,stage);for(const ch of a.type){inp.value+=ch;if(!await sleep(380,t))return}if(!await sleep(500,t))return;submit(b);if(!await sleep(a.gap,t))return}
+  }
+  auto=false;updateChrome();
+}
+function stopAuto(){token++;auto=false;stage.dataset.auto='0';updateChrome()}
+function gated(){return !auto&&CH[beat]&&!done[beat]}
+function updateChrome(){
+  q('#bPrev').disabled=beat===0; q('#bNext').disabled=beat===NB-1||gated();
+  q('#hint').textContent=gated()?'先作答,再继续':''; q('#autoBtn').classList.toggle('on',auto); q('#autoBtn').textContent=auto?'■ 停止自动':'▶ 自动演示';
+  qa('#dots i').forEach((d,i)=>{d.classList.toggle('on',i<=beat);d.classList.toggle('cur',i===beat)});
+  q('#vName').textContent=V+' · '+VARS[V].name;
+}
+stage.addEventListener('click',e=>{
+  const o=e.target.closest('.opt'); if(o&&!auto){pick(+o.dataset.b,+o.dataset.i);return}
+  const g=e.target.closest('.go'); if(g&&!auto){submit(+g.dataset.b)}
+});
+stage.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.num')&&!auto)submit(+e.target.dataset.b)});
+
+/* ================= variant A · 墨卷 ================= */
+function slots18(){return Array.from({length:18},(_,i)=>i===0?'<i class="lit" data-from="3">潜</i>':i===1?'<i class="lit" data-from="3">见</i>':'<i>待立</i>').join('')}
+function buildA(){
+ const mount=`<svg class="mist m1" viewBox="0 0 4600 560" preserveAspectRatio="none"><defs><filter id="bl"><feGaussianBlur stdDeviation="6"/></filter></defs><g fill="#2a2620" filter="url(#bl)"><path d="M0 560V380C200 300 300 330 420 250S640 200 800 300 1000 360 1200 270 1480 180 1640 280 1900 380 2100 300 2400 190 2560 290 2800 400 3000 300 3300 220 3480 300 3800 390 4000 290 4300 230 4600 330V560Z"/></g></svg>
+ <svg class="mist m2" viewBox="0 0 4600 560" preserveAspectRatio="none"><g fill="#4a4338" filter="url(#bl)"><path d="M0 560V430C250 360 380 400 520 340S800 300 960 380 1250 430 1400 350 1700 290 1900 370 2200 440 2400 360 2700 300 2900 380 3200 430 3400 360 3800 310 4000 380 4300 420 4600 380V560Z"/></g></svg>
+ <div class="sun"></div>
+ <div class="track">
+  <section class="sc" data-s="0">
+    <div class="title ink r" data-from="0" style="--d:.3s">降题十八掌</div>
+    <div class="title-sub fade r" data-from="0" style="--d:1.6s">见题拆题之降题十八掌</div>
+    <div class="mission ink r" data-from="0" style="--d:2.2s">一错,破一类。</div>
+    <div class="brush r" data-from="0" style="left:640px;top:520px;width:700px;--d:3.2s"></div>
+    <div class="mission-tag fade r" data-from="0" style="--d:3.6s"><span class="tag">草稿 · 使命句待孩子确认</span></div>
+  </section>
+  <section class="sc" data-s="1">
+    <div class="kicker fade r" data-from="1" style="--d:.2s">硬件示意</div>
+    <div class="hw">
+      <div class="paper fade r" data-from="1" style="--d:.5s">一页纸上的错题<br><span style="color:#8a7f6a;font-size:24px">(示意)</span></div>
+      <div class="flow fade r" data-from="1" style="--d:1.1s"><svg viewBox="0 0 260 80" fill="none" stroke="#b3261e" stroke-width="5" stroke-linecap="round"><path d="M0 50C70 -10 190 -10 250 40"/><path d="M232 28l20 14-24 8"/></svg></div>
+      <div class="board fade r" data-from="1" style="--d:1.6s">${boardSVG({body:'#f6efdc',line:'#1d1a17',screen:'#e6dcc3',btn:'#ece2cb'})}</div>
+    </div>
+    <div class="hwcap fade r" data-from="1" style="--d:2.4s">题目将由行空板拍摄,<span style="color:var(--red)">此处为示意</span></div>
+  </section>
+  <section class="sc" data-s="2">
+    <div class="kicker fade r" data-from="2" style="--d:.1s">见题</div>
+    <div class="scroll r" data-from="2"><div class="q ink r" data-from="2" style="--d:1.2s">上衣标价 200 元,先打八折,再降 20 元。售价是多少元?</div></div>
+    <div class="wrong fade r" data-from="2" style="--d:2.6s"><span class="tag">演示错法 · 演示数据</span><br>200 − 20 = 180<br>180 × 0.8 = <b>144</b></div>
+    <div class="cap fade r" data-from="2" style="--d:3.4s">先看这道题涉及哪一掌。</div>
+  </section>
+  <section class="sc" data-s="3">
+    <div class="kicker">见题 · 先判断</div>
+    <div class="q2 fade r" data-from="3" style="--d:.2s;font-size:44px;top:190px;width:1500px">条件写明了吗?要按顺序展开,还是要自己找出缺的量?</div>
+    <div class="opts optsA v" data-opts="3" style="top:290px"></div>
+    <div class="fb fbA" data-fb="3"></div>
+    <div class="stampbox stamp r" data-after="3" style="--d:.4s;left:1040px;top:250px;right:auto;width:190px;height:190px;font-size:60px">见龙在田</div>
+  </section>
+  <section class="sc" data-s="4">
+    <div class="kicker">拆题 · 再判断</div>
+    <div class="ribbon fade r" data-from="4" style="--d:.3s;top:170px;width:760px;font-size:36px"><b>见题不等于拆题。</b><br>见题看这是哪一掌,拆题看错在哪里。</div>
+    <div class="q2 fade r" data-from="4" style="--d:.2s;font-size:42px;top:190px;width:900px">他把 144 元写成答案,错在哪一类?</div>
+    <div class="opts optsA c4" data-opts="4" style="top:400px"></div>
+    <div class="fb fbA" data-fb="4" style="bottom:110px"></div>
+  </section>
+  <section class="sc" data-s="5">
+    <div class="kicker">练习 · 引导</div>
+    <div class="q2 fade r" data-from="5" style="--d:.2s;font-size:48px;top:190px">鞋标价 250 元,先打八折,再降 40 元。<span class="tag">演示数据</span></div>
+    <div class="opts optsA h" data-opts="5" style="top:360px"></div>
+    <div class="fb fbA" data-fb="5" style="bottom:110px"></div>
+  </section>
+  <section class="sc" data-s="6">
+    <div class="kicker">练习 · 独立解题</div>
+    <div class="q2 fade r" data-from="6" style="--d:.2s;top:200px">一根绳子 50 米,先用去一半,再用去 6 米。还剩多少米?<span class="tag">演示数据</span></div>
+    <div class="pbox fade r" data-from="6" style="--d:.7s;top:520px" data-input="6"></div>
+    <div class="fb fbA" data-fb="6" style="bottom:110px"></div>
+  </section>
+  <section class="sc" data-s="7">
+    <div class="hang r" data-from="7">
+      <div class="face"><div>
+        <div class="kicker" style="margin:0">招式速查卡</div>
+        <h3>见龙在田</h3>
+        <dl><dt>判断依据</dt><dd>题面写明的条件,按写明的顺序展开。</dd><dt>破解思路</dt><dd>把每个条件按顺序写成一步,一步一步算。</dd><dt>本次易错点</dt><dd>把「先打八折,再降 20 元」读反。</dd></dl>
+        <div class="tags"><span class="tag">折扣</span><span class="tag">草稿 · 待确认</span></div>
+      </div><span class="seal stamp r" data-from="7" style="--d:2.4s">见龙</span></div>
+    </div>
+  </section>
+ </div>
+ <nav class="segnav">${SEGS.map((s,i)=>`<span data-seg="${i}">${s}</span>`).join('')}</nav>
+ <div class="slots">${slots18()}</div><div class="slotcap">十八掌位 · 两掌已立,其余十六位待立</div>
+ <div class="tent">招式体系暂定 · 孩子未确认 · 演示数据</div>
+ <div class="vig"></div><div class="grain"></div>`;
+ return mount;
+}
+
+/* ================= variant B · 擂台 ================= */
+function ringSVG(){
+ let s='';const R=330;
+ for(let i=0;i<18;i++){const a=(-90+i*20)*Math.PI/180,x=450+R*Math.cos(a),y=450+R*Math.sin(a),lit=i<2;
+  s+=`<g class="slot ${lit?'lit':''}"><circle cx="${x}" cy="${y}" r="${lit?46:34}"/><text x="${x}" y="${y}" transform="rotate(${-i*20+(+0)} ${x} ${y})" style="display:none"></text><text x="${x}" y="${y}">${lit?(i===0?'潜':'见'):i+1}</text></g>`}
+ return `<svg class="ring" viewBox="0 0 900 900"><defs><radialGradient id="rg"><stop offset="0" stop-color="#e3b04b" stop-opacity=".25"/><stop offset="1" stop-color="#e3b04b" stop-opacity="0"/></radialGradient></defs>
+ <circle cx="450" cy="450" r="440" fill="url(#rg)"/>
+ <g class="rot"><circle cx="450" cy="450" r="400" fill="none" stroke="#e3b04b55" stroke-width="2" stroke-dasharray="4 12"/><circle cx="450" cy="450" r="330" fill="none" stroke="#e3b04b44" stroke-width="2"/><circle cx="450" cy="450" r="260" fill="none" stroke="#e3b04b22" stroke-width="2"/>${s}</g>
+ <circle class="halo" cx="450" cy="450" r="60"/>
+ <text x="450" y="430" text-anchor="middle" font-size="110" font-weight="900" fill="#e3b04b" font-family="Songti SC">十八</text><text x="450" y="520" text-anchor="middle" font-size="64" font-weight="700" fill="#e3b04bcc" font-family="Songti SC" letter-spacing="14">掌位</text></svg>`;
+}
+function buildB(){
+ return `<div class="bgfx"></div><div class="floor"></div><canvas id="emb" width="1920" height="1080"></canvas><div class="spot"></div>
+ <div class="hdr"><span class="t">降题十八掌</span><nav>${SEGS.map((s,i)=>`<span data-seg="${i}">${s}</span>`).join('')}</nav></div>
+ <div class="ringwrap">${ringSVG()}<div class="ringcap">十八掌位 · 两掌已立 · 其余十六位待立</div></div>
+ <div class="panel">
+  <section class="sc" data-from="0" data-to="0" style="padding-top:200px">
+    <div class="big strike r" data-from="0" style="font-size:150px"><span style="--i:0">降</span><span style="--i:1">题</span><span style="--i:2">十</span><span style="--i:3">八</span><span style="--i:4">掌</span></div>
+    <div class="mission r" data-from="0" style="--d:1.9s">一错,破一类。</div>
+    <div class="r" data-from="0" style="--d:2.4s"><span class="tag">草稿 · 使命句待孩子确认</span></div>
+  </section>
+  <section class="sc" data-from="1" data-to="1">
+    <div class="kick r" data-from="1">硬件示意</div>
+    <div class="hwpanel r frame" data-from="1" style="--d:.2s">${boardSVG({body:'#1a131f',line:'#e3b04b',screen:'#0d0911',btn:'#2a1c14'})}
+      <div class="hwtxt">题目将由行空板拍摄<div class="beam"></div><span style="color:var(--gold)">此处为示意</span><div class="hint">Mind+ 的拍照与按键由孩子自己完成</div></div></div>
+  </section>
+  <section class="sc" data-from="2" data-to="2">
+    <div class="kick r" data-from="2">见题</div>
+    <div class="frame r" data-from="2" style="--d:.2s"><div class="q">上衣标价 <em>200 元</em>,<em>先打八折</em>,<em>再降 20 元</em>。售价是多少元?</div></div>
+    <div class="wrongbox r" data-from="2" style="--d:1.2s"><b>演示错法 · 演示数据</b>200 − 20 = 180,180 × 0.8 = <span style="color:var(--red);font-size:48px;font-weight:900">144</span></div>
+    <div class="hint r" data-from="2" style="--d:2s">先看这道题涉及哪一掌。</div>
+  </section>
+  <section class="sc" data-from="3" data-to="3">
+    <div class="kick r" data-from="3">见题 · 先判断</div>
+    <h2 class="r" data-from="3" style="--d:.1s;font-size:52px">条件写明了吗?哪一掌?</h2>
+    <div class="opts optsB" data-opts="3"></div>
+    <div class="fb fbB" data-fb="3"></div>
+  </section>
+  <section class="sc" data-from="4" data-to="4">
+    <div class="kick r" data-from="4">拆题 · 再判断</div>
+    <h2 class="r" data-from="4" style="--d:.1s;font-size:48px">见题不等于拆题。错在哪里?</h2>
+    <div class="opts optsB g2" data-opts="4"></div>
+    <div class="fb fbB" data-fb="4"></div>
+  </section>
+  <section class="sc" data-from="5" data-to="5">
+    <div class="kick r" data-from="5">练习 · 引导 <span class="tag">演示数据</span></div>
+    <div class="frame r" data-from="5" style="--d:.1s"><div class="q" style="font-size:46px">鞋标价 250 元,先打八折,再降 40 元。售价是多少元?</div></div>
+    <div class="opts optsB" data-opts="5" style="margin-top:20px"></div>
+    <div class="fb fbB" data-fb="5" style="min-height:100px"></div>
+  </section>
+  <section class="sc" data-from="6" data-to="6">
+    <div class="kick r" data-from="6">练习 · 独立解题 <span class="tag">演示数据</span></div>
+    <div class="frame r" data-from="6" style="--d:.1s"><div class="q">一根绳子 50 米,先用去一半,再用去 6 米。还剩多少米?</div></div>
+    <div class="pbox r" data-from="6" style="--d:.5s" data-input="6"></div>
+    <div class="fb fbB" data-fb="6"></div>
+  </section>
+  <section class="sc" data-from="7" data-to="7" style="padding-top:80px">
+    <div class="card"><div class="kick" style="margin:0">招式速查卡</div><h3>见龙在田</h3>
+     <dl><dt>判断依据</dt><dd>题面写明的条件,按写明的顺序展开。</dd><dt>破解思路</dt><dd>把每个条件按顺序写成一步,一步一步算。</dd><dt>本次易错点</dt><dd>把「先打八折,再降 20 元」读反。</dd></dl>
+     <div class="tags"><span class="tag">折扣</span><span class="tag">草稿 · 待确认</span></div></div>
+  </section>
+ </div>
+ <div class="tent">招式体系暂定 · 孩子未确认 · 演示数据</div><div class="scan"></div>`;
+}
+let embRAF=0;
+function embers(){
+ cancelAnimationFrame(embRAF); const c=q('#emb'); if(!c)return; const x=c.getContext('2d');
+ const P=Array.from({length:70},()=>({x:Math.random()*1920,y:Math.random()*1080,r:Math.random()*2.4+.6,v:Math.random()*.5+.15,p:Math.random()*6}));
+ (function f(t){x.clearRect(0,0,1920,1080);for(const p of P){p.y-=p.v;p.x+=Math.sin(t/1800+p.p)*.3;if(p.y<-10){p.y=1090;p.x=Math.random()*1920}x.globalAlpha=.25+.35*Math.sin(t/700+p.p)**2;x.fillStyle='#ffd27a';x.beginPath();x.arc(p.x,p.y,p.r,0,7);x.fill()}embRAF=requestAnimationFrame(f)})(0);
+}
+
+/* ================= variant C · 图解 ================= */
+function buildC(){
+ const g18=Array.from({length:18},(_,i)=>i===0?'<i class="lit">潜</i>':i===1?'<i class="lit">见</i>':'<i>待立</i>').join('');
+ return `<aside class="rail"><div class="logo">降题<br>十八掌<small>见题拆题</small></div>
+  <ol><div class="prog"></div>${SEGS.map((s,i)=>`<li data-seg="${i}"><i>${i+1}</i><span>${s}</span></li>`).join('')}</ol>
+  <div class="tent">招式体系暂定<br>孩子未确认<br>演示数据</div></aside>
+ <div class="main">
+  <section class="sc" data-from="0" data-to="0"><div class="num-big">01</div>
+    <div class="kick r" data-from="0" style="--d:.3s">使命</div>
+    <div class="mission r" data-from="0" style="--d:.5s">一错,<span class="hl">破一类</span>。</div>
+    <div class="r" data-from="0" style="--d:.9s"><span class="tag">草稿 · 使命句待孩子确认</span></div>
+    <div class="grid18 r" data-from="0" style="--d:1.3s">${g18}</div>
+    <div class="lead r" data-from="0" style="--d:1.6s;font-size:26px">十八个掌位 · 两掌已立 · 其余十六位待立</div>
+  </section>
+  <section class="sc" data-from="1" data-to="1"><div class="num-big">02</div>
+    <div class="kick r" data-from="1">硬件示意</div><h2 class="r" data-from="1" style="--d:.1s">从一页纸,到一块板</h2>
+    <div class="hwrow"><div class="r" data-from="1" style="--d:.5s">${boardSVG({body:'#fffdf8',line:'#14213d',screen:'#e7e2d4',btn:'#ffc43d'})}</div>
+      <div class="hwnote r" data-from="1" style="--d:.9s">题目由行空板拍摄,<br>显示在它的屏幕上。<div class="callout">此处为示意<br><span style="font-size:24px;font-weight:600">拍照与按键由孩子用 Mind+ 完成</span></div></div></div>
+  </section>
+  <section class="sc" data-from="2" data-to="4"><div class="num-big" data-from="2" data-to="3">03</div>
+    <div class="kick" data-from="2" data-to="3">见题与拆题</div>
+    <h2 class="r" data-from="2" data-to="3" style="--d:.1s;font-size:56px">先把题面拆成条件</h2>
+    <div class="chips">
+      <div class="chip r" data-from="2" style="--d:.5s"><b>·</b>上衣标价 200 元</div>
+      <div class="chip r" data-from="2" style="--d:.8s"><b>先</b>打八折</div>
+      <div class="chip r" data-from="2" style="--d:1.1s"><b>再</b>降 20 元</div>
+      <div class="r" data-from="2" style="--d:1.4s;align-self:center"><span class="tag">演示数据</span></div>
+    </div>
+    <div class="lanes">
+      <div class="lane bad r" data-from="2" style="--d:1.6s"><span class="lab">演示错法</span>
+        <div class="n">200</div><div class="ar in" style="--d:1.9s"><em>−20</em></div><div class="n pend in" style="--d:2.4s">180</div><div class="ar in" style="--d:2.7s"><em>×0.8</em></div><div class="n end pend in" style="--d:3.2s">144</div></div>
+      <div class="lane good r" data-after="3" style="--d:.2s"><span class="lab">按写明顺序</span>
+        <div class="n">200</div><div class="ar in" style="--d:.6s"><em>×0.8</em></div><div class="n pend in" style="--d:1.1s">160</div><div class="ar in" style="--d:1.4s"><em>−20</em></div><div class="n end pend in" style="--d:1.9s">140</div></div>
+    </div>
+    <div class="swapnote r" data-after="4" style="--d:.3s">条件都写进了式子,只是 <b>先、再</b> 读反了。</div>
+    <div class="bottom">
+      <div class="r" data-from="2" data-to="2" style="--d:3.6s;font-size:32px;color:var(--mut)">先看这道题涉及哪一掌。</div>
+      <div class="r" data-from="3" data-to="3"><div class="kick">见题 · 先判断:条件写明了吗?</div><div class="opts optsC" data-opts="3"></div><div class="fb fbC" data-fb="3"></div></div>
+      <div class="r" data-from="4" data-to="4"><div class="kick">拆题 · 见题不等于拆题,错在哪里?</div><div class="opts optsC" data-opts="4"></div><div class="fb fbC" data-fb="4"></div></div>
+    </div>
+  </section>
+  <section class="sc" data-from="5" data-to="6"><div class="num-big">04</div>
+    <div class="kick r" data-from="5">练习</div>
+    <div class="q2c r" data-from="5" data-to="5" style="--d:.2s;margin-top:0">鞋标价 250 元,先打八折,再降 40 元。<span class="tag">演示数据</span></div>
+    <div class="q2c r" data-from="6" data-to="6" style="--d:.2s;margin-top:-5px;position:absolute;left:110px;top:150px">一根绳子 50 米,先用去一半,再用去 6 米。还剩多少米?<span class="tag">演示数据</span></div>
+    <div class="chips r" data-from="5" data-to="5" style="--d:.5s"><div class="chip"><b>·</b>标价 250 元</div><div class="chip"><b>先</b>打八折</div><div class="chip"><b>再</b>降 40 元</div></div>
+    <div class="chips r" data-from="6" data-to="6" style="--d:.5s;margin-top:200px"><div class="chip"><b>·</b>共 50 米</div><div class="chip"><b>先</b>用去一半</div><div class="chip"><b>再</b>用去 6 米</div></div>
+    <div class="bottom">
+      <div class="r" data-from="5" data-to="5"><div class="kick">引导练习</div><div class="opts optsC col" data-opts="5"></div><div class="fb fbC" data-fb="5" style="min-height:64px;margin-top:14px"></div></div>
+      <div class="r" data-from="6" data-to="6"><div class="kick">独立解题</div><div class="pbox" data-input="6"></div><div class="fb fbC" data-fb="6"></div></div>
+    </div>
+  </section>
+  <section class="sc" data-from="7" data-to="7" style="padding-top:60px"><div class="kick r" data-from="7">招式速查卡</div>
+    <div class="stage-card"><div class="flip r" data-from="7" style="opacity:1"><div class="back">掌</div>
+      <div class="front"><span class="tag tt">草稿 · 待确认</span><h3>见龙在田</h3>
+       <div class="cols"><dl><dt>判断依据</dt><dd>题面写明的条件,按写明的顺序展开。</dd></dl><dl><dt>破解思路</dt><dd>把每个条件按顺序写成一步,一步一步算。</dd></dl><dl style="grid-column:1/3"><dt>本次易错点</dt><dd>把「先打八折,再降 20 元」读反:200−20 再×0.8,不等于 200×0.8 再−20。</dd></dl></div>
+       <div class="tags"><span class="tag">折扣</span><span class="tag">演示数据</span></div></div></div></div>
+  </section>
+ </div>`;
+}
+
+/* ================= boot ================= */
+const VARS={A:{name:'墨卷',build:buildA,css:'vA'},B:{name:'擂台',build:buildB,css:'vB'},C:{name:'图解',build:buildC,css:'vC'}};
+function mount(v,b=0,runAutoNow=false){
+ token++;auto=false;V=v;cancelAnimationFrame(embRAF);done={};
+ stage.className='stage '+VARS[v].css; stage.dataset.auto='0'; stage.innerHTML=VARS[v].build();
+ fillInteractive(); if(v==='B')embers();
+ const u=new URL(location);u.searchParams.set('variant',v);history.replaceState(null,'',u);
+ go(b); requestAnimationFrame(()=>go(b)); if(runAutoNow)runAuto();
+}
+function fit(){const s=Math.min(innerWidth/1920,(innerHeight-56)/1080);q('#scaler').style.transform=`scale(${s})`}
+addEventListener('resize',fit);fit();
+q('#dots').innerHTML=Array.from({length:NB},(_,i)=>`<i title="${i}"></i>`).join('');
+qa('#dots i').forEach((d,i)=>d.onclick=()=>{stopAuto();go(i)});
+const cyc=d=>{const k=Object.keys(VARS);mount(k[(k.indexOf(V)+d+k.length)%k.length],0)};
+q('#vPrev').onclick=()=>cyc(-1);q('#vNext').onclick=()=>cyc(1);
+q('#bPrev').onclick=()=>{stopAuto();go(beat-1)};
+q('#bNext').onclick=()=>{if(!gated()){stopAuto();go(beat+1)}};
+q('#autoBtn').onclick=()=>auto?stopAuto():runAuto();
+addEventListener('keydown',e=>{
+ if(e.target.matches('input,textarea,[contenteditable]'))return;
+ if(e.key==='ArrowRight')q('#bNext').click();else if(e.key==='ArrowLeft')q('#bPrev').click();
+ else if(e.key===' '){e.preventDefault();q('#autoBtn').click()}
+ else if('123'.includes(e.key))mount('ABC'[+e.key-1],0);
+});
+const P=new URLSearchParams(location.search);
+window.story={go,pick,submit,runAuto,mount,get done(){return done}};
+mount((P.get('variant')||'A').toUpperCase(),+(P.get('beat')||0),P.get('auto')==='1');
+</script>
+</body>
+</html>
