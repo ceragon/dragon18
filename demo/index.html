@@ -5,7 +5,7 @@
 <title>见题拆题之降题十八掌 · 软件 Demo</title>
 <!--
 拍引擎与舞台骨架(issue #38):片头卡 + 六段导轨 + 拍引擎 + 键盘推进 + ?beat=N 直达
-+ 1920×1080 等比缩放纯舞台。拍 1–13 为骨架占位,内容在后续票(#39–#47)补全。
++ 1920×1080 等比缩放纯舞台。拍 1 使命开场已补全(#39);拍 2–13 为骨架占位,内容在后续票补全。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -62,6 +62,20 @@ html,body{height:100%;background:#111;overflow:hidden}
 .tc-decl{display:inline-block;margin-top:64px;font:700 20px var(--sans);letter-spacing:.18em;color:var(--mut);border:1.5px dashed var(--mut);border-radius:999px;padding:10px 28px}
 .tc-attr{margin-top:46px;font-size:22px;color:var(--mut);letter-spacing:.06em}
 
+/* ---------- 使命开场拍(拍 1) ---------- */
+.ms-line{font:900 66px var(--serif);letter-spacing:.04em;line-height:1.4;max-width:1300px;margin-top:56px}
+.ms-line .hi{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 .06em;
+ background-image:linear-gradient(var(--sun),var(--sun));background-repeat:no-repeat;background-position:0 100%;background-size:0% .58em}
+.sc.in .ms-line .hi{animation:hi .9s cubic-bezier(.7,0,.2,1) .7s forwards}
+@keyframes hi{to{background-size:100% .58em}}
+.draft{display:inline-block;margin-top:34px;font:700 20px var(--sans);letter-spacing:.18em;color:var(--mut);border:1.5px dashed var(--mut);border-radius:999px;padding:8px 26px}
+.p18{display:grid;grid-template-columns:repeat(9,1fr);gap:16px;margin-top:64px}
+.p18 i{height:104px;border-radius:14px;border:2.5px dashed #6b738566;display:grid;place-items:center;font:700 26px var(--serif);font-style:normal;color:var(--mut);letter-spacing:.1em;
+ opacity:0;transform:translateY(22px) scale(.92);transition:opacity .5s var(--d,0s),transform .7s cubic-bezier(.2,1.2,.3,1) var(--d,0s)}
+.sc.in .p18 i{opacity:1;transform:none}
+.p18 i.lit{background:var(--navy);border-style:solid;border-color:var(--navy);color:#f4f1ea;font-size:26px;letter-spacing:.05em;white-space:nowrap}
+.p18-note{margin-top:32px;font:600 22px var(--sans);color:var(--mut);letter-spacing:.1em}
+
 /* ---------- 骨架占位拍(后续票补全) ---------- */
 .ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
 .ph-p{font-size:28px;color:var(--mut);margin-top:26px}
@@ -91,6 +105,14 @@ html,body{height:100%;background:#111;overflow:hidden}
         <div class="r" style="--d:1.3s"><span class="tc-decl">演示数据 · 预置回复 · 硬件示意</span></div>
         <div class="tc-attr r" style="--d:1.8s">演示 Demo 由家长协助制作，参赛程序由李赫愃本人编写</div>
       </div>
+    </section>
+    <section class="sc" data-beat="1">
+      <div class="num-big">01</div>
+      <div class="kick r" style="--d:.15s">使命开场</div>
+      <h2 class="ms-line r" style="--d:.45s"><span class="hi">一错，破一类——看懂错在哪，带走一类题的破解思路。</span></h2>
+      <div class="r" style="--d:.8s"><span class="draft">草稿 · 待确认</span></div>
+      <div class="p18" id="p18-1" aria-label="十八掌位"></div>
+      <p class="p18-note r" style="--d:2.7s">十八个掌位 · 两掌已立 · 其余十六位待立</p>
     </section>
   </div>
 </div></div></div>
@@ -123,8 +145,8 @@ const railOl = document.querySelector(".rail ol");
 const segLis = [...document.querySelectorAll(".rail li[data-seg]")];
 const main = document.querySelector(".main");
 
-// 占位景:拍 1–13 的画面槽位,后续票替换为正式内容。
-for (let b = 1; b < NB; b++) {
+// 占位景:拍 2–13 的画面槽位(拍 1 使命开场已是正式内容),后续票替换为正式内容。
+for (let b = 2; b < NB; b++) {
   const segName = BEATS[b].seg == null ? "问辩附页" : SEGMENTS[BEATS[b].seg];
   const sec = document.createElement("section");
   sec.className = "sc";
@@ -135,8 +157,21 @@ for (let b = 1; b < NB; b++) {
     <p class="ph-p r" style="--d:.7s">骨架占位 · 此拍画面在后续票补全</p>`;
   main.appendChild(sec);
 }
+// 已立掌名单:见龙在田、潜龙勿用。导轨小条与十八掌位完整阵列共用这同一份数据;
+// 其余十六位灰显「待立」,不预先写名称。
+const PALMS = ["见龙在田", "潜龙勿用"];
 document.querySelector(".mini18").innerHTML =
-  Array.from({length: 18}, (_, i) => `<i${i === 0 ? ' class="lit">见' : i === 1 ? ' class="lit">潜' : ">"} </i>`).join("");
+  Array.from({length: 18}, (_, i) =>
+    i < PALMS.length ? `<i class="lit">${PALMS[i][0]}</i>` : "<i> </i>").join("");
+// 十八掌位完整阵列:已立掌深蓝亮起,其余虚线灰显「待立」;--d 逐格落定。
+// 使命开场与见题两拍共用,见题拍(#40+)填充时复用。
+const fillP18 = (el, base) => {
+  el.innerHTML = Array.from({length: 18}, (_, i) => {
+    const d = `--d:${(base + i * 0.07).toFixed(2)}s`;
+    return i < PALMS.length ? `<i class="lit" style="${d}">${PALMS[i]}</i>` : `<i style="${d}">待立</i>`;
+  }).join("");
+};
+fillP18(document.getElementById("p18-1"), 0.9);
 const scenes = [...document.querySelectorAll(".sc")];
 
 const params = new URLSearchParams(location.search);
