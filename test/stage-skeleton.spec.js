@@ -7,7 +7,7 @@ const stage = (page) => page.locator("#stage");
 const segLi = (page, s) => page.locator(`.rail li[data-seg="${s}"]`);
 const beat = async (page) => +(await stage(page).getAttribute("data-beat"));
 
-test("片头卡：五要素在场、六段不点亮、常驻小标可见、纯舞台无控件", async ({ page }) => {
+test("片头卡：五要素在场、六段不点亮、常驻小标可见、舞台内无控件", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByText("见题拆题之降题十八掌")).toBeVisible();
@@ -21,7 +21,10 @@ test("片头卡：五要素在场、六段不点亮、常驻小标可见、纯�
   await expect(page.locator(".rail li.on")).toHaveCount(0);
   await expect(page.locator(".rail li.past")).toHaveCount(0);
 
-  await expect(page.getByRole("button")).toHaveCount(0);
+  // 舞台内仍无控件;视口层翻拍钮(#53)在 #stage 外、非 record 常驻。
+  await expect(stage(page).getByRole("button")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /上一拍/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /下一拍/ })).toBeVisible();
   await expect(page.getByRole("link")).toHaveCount(0);
 });
 
@@ -39,7 +42,8 @@ test("键盘契约：→ / 空格 / PageDown 前进、← 回退、点空白不�
 
   await page.mouse.click(900, 360);
   expect(await beat(page)).toBe(2);
-  await page.mouse.click(80, 600);
+  // (640,600) 是舞台主区空白——注意 (80,600) 已落在导轨热区上会跳段(#53),不能当空白点。
+  await page.mouse.click(640, 600);
   expect(await beat(page)).toBe(2);
 
   await page.keyboard.press("ArrowRight");
@@ -90,10 +94,16 @@ test("舞台等比缩放：非 1920×1080 视口居中不裁切", async ({ page 
   expect(rail.x).toBeGreaterThanOrEqual(-1);
 });
 
-test("record=1 参数保留：指针不进画面", async ({ page }) => {
+test("record=1 参数保留：指针不进画面，翻拍钮不渲染、导轨点击关闭", async ({ page }) => {
   await page.goto("/?record=1");
 
   await expect(stage(page)).toHaveAttribute("data-record", "1");
   const cursor = await stage(page).evaluate((el) => getComputedStyle(el).cursor);
   expect(cursor).toBe("none");
+
+  // #53:record 下视口导航全关——钮不渲染,点导轨不跳段。
+  await expect(page.getByRole("button")).toHaveCount(0);
+  const seg3 = await segLi(page, 3).boundingBox();
+  await page.mouse.click(seg3.x + seg3.width / 2, seg3.y + seg3.height / 2);
+  expect(await beat(page)).toBe(0);
 });
