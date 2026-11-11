@@ -5,7 +5,7 @@
 <title>见题拆题之降题十八掌 · 软件 Demo</title>
 <!--
 拍引擎与舞台骨架(issue #38):片头卡 + 六段导轨 + 拍引擎 + 键盘推进 + ?beat=N 直达
-+ 1920×1080 等比缩放纯舞台。拍 1 使命开场已补全(#39);拍 2–13 为骨架占位,内容在后续票补全。
++ 1920×1080 等比缩放纯舞台。拍 1 使命开场(#39)、拍 2–3 硬件示意(#40)已补全;拍 4–13 为骨架占位。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -40,7 +40,7 @@ html,body{height:100%;background:#111;overflow:hidden}
 .mini18{margin-top:auto;display:grid;grid-template-columns:repeat(9,22px);gap:8px}
 .mini18 i{width:22px;height:22px;border-radius:6px;border:2px dashed #8d97b355;display:grid;place-items:center;font:700 12px var(--serif);font-style:normal;color:transparent}
 .mini18 i.lit{background:var(--sun);border-color:var(--sun);color:var(--navy)}
-.tent{margin-top:34px;font:600 16px var(--sans);color:#8d97b3;letter-spacing:.12em;line-height:1.8;word-break:keep-all}
+.tent{margin-top:34px;font:600 16px var(--sans);color:#8d97b3;letter-spacing:.12em;line-height:1.8;word-break:keep-all;white-space:pre-line}
 
 /* ---------- 主区:每拍一景 ---------- */
 .main{position:absolute;left:380px;top:0;right:0;bottom:0}
@@ -75,6 +75,34 @@ html,body{height:100%;background:#111;overflow:hidden}
 .sc.in .p18 i{opacity:1;transform:none}
 .p18 i.lit{background:var(--navy);border-style:solid;border-color:var(--navy);color:#f4f1ea;font-size:26px;letter-spacing:.05em;white-space:nowrap}
 .p18-note{margin-top:32px;font:600 22px var(--sans);color:var(--mut);letter-spacing:.1em}
+
+/* ---------- 硬件示意拍(拍 2–3) ---------- */
+.hw{display:flex;align-items:flex-start;gap:60px;margin-top:64px}
+.hw-fig{flex:none;width:720px}
+.k10{display:block;width:720px;height:auto}
+.k10 text{font-family:var(--sans)}
+.k10 .bd{fill:var(--card);stroke:var(--navy);stroke-width:5;stroke-dasharray:18 10}
+.k10 .part{fill:none;stroke:var(--mut);stroke-width:4}
+.k10 .scr{fill:#ece6d8;stroke:var(--navy);stroke-width:4;stroke-dasharray:12 8}
+.k10 .dot{fill:var(--mut)}
+.k10 .bl{font-size:30px;font-weight:700;fill:var(--mut)}
+.k10 .co{opacity:0;transition:opacity .45s}
+.k10 .co-line{stroke:var(--navy);stroke-width:3}
+.k10 .co-dot{fill:var(--sun);stroke:var(--navy);stroke-width:2}
+.k10 .co-txt{font-size:26px;font-weight:700;fill:var(--navy)}
+.k10 .co-txt .u{font-size:23px;font-weight:600;fill:var(--mut)}
+.k10 .hl .part{transition:stroke .4s,fill .4s}
+.k10 .hl .dot,.k10 .hl .bl{transition:fill .4s}
+.sc.in.cont .k10 .co{opacity:1;transition:opacity .6s var(--d,0s)}
+.sc.in.cont .k10 .hl .part{stroke:var(--sun);fill:#ffc43d1f;transition:stroke .5s var(--d,0s),fill .5s var(--d,0s)}
+.sc.in.cont .k10 .hl .dot{fill:var(--navy);transition:fill .5s var(--d,0s)}
+.sc.in.cont .k10 .hl .bl{fill:var(--navy);transition:fill .5s var(--d,0s)}
+.k10-cap{width:400px;text-align:center;margin-top:4px;font:600 20px var(--sans);color:var(--mut);letter-spacing:.16em}
+.hw-side{flex:1;min-width:0;padding-top:30px}
+.own-h{font-size:30px;font-weight:700;line-height:1.5}
+.own-l{list-style:none;margin-top:22px}
+.own-l li{display:flex;gap:16px;font-size:26px;line-height:1.75;margin-top:16px}
+.own-l .no{flex:none;font-weight:700;color:var(--coral)}
 
 /* ---------- 骨架占位拍(后续票补全) ---------- */
 .ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
@@ -120,12 +148,15 @@ html,body{height:100%;background:#111;overflow:hidden}
 const SEGMENTS = ["使命开场","硬件示意","见题","拆题","练习","招式速查卡"];
 const TENT_STD = "招式体系暂定 · 孩子未确认 · 演示数据";
 const TENT_QA  = "问辩备查 · 不在正式演示流程内";
+// 硬件示意拍的公共标注(#40):如实句措辞随真实现状,板到位开始制作再改「制作中」。
+const HW = {seg:1,tag:"硬件示意",note:"这是设计示意：行空板尚未实物制作"};
 // 拍序:seg = 点亮段(null = 导轨外);gate 作答拍在后续票接上选项后开启;
-// note 说明条与 notes 解说词草稿逐拍留槽位,文案未定(#49 唤出)。
+// tag = 该拍专属常驻小标(加在标准如实句前一行);note 说明条与 notes 解说词草稿逐拍留槽位,文案未定。
 const BEATS = [
   {seg:null},                          // 0  片头卡(导轨外)
   {seg:0},                             // 1  使命开场
-  {seg:1},{seg:1},                     // 2–3 硬件示意
+  HW,                                  // 2  硬件示意:整板轮廓+归属清单
+  HW,                                  // 3  硬件示意:同屏续拍,三条引出线依次高亮
   {seg:2},{seg:2},                     // 4–5 见题(5 为作答拍)
   {seg:3},{seg:3},{seg:3},             // 6–8 拆题(6 为作答拍)
   {seg:4},{seg:4},                     // 9–10 练习(9、10 为作答拍)
@@ -145,16 +176,56 @@ const railOl = document.querySelector(".rail ol");
 const segLis = [...document.querySelectorAll(".rail li[data-seg]")];
 const main = document.querySelector(".main");
 
-// 占位景:拍 2–13 的画面槽位(拍 1 使命开场已是正式内容),后续票替换为正式内容。
+// 硬件示意拍(#40):拍 2–3 同屏,只有一个景——板载屏留空不画内容、掌名不进板图;
+// 拍 3 是续拍(cover):场景不退出不重进,.cont 只让三条引出线出现、三部件依次高亮。
+const CALLOUTS = [
+  {d:0.9, x:217, y:92,  name:"摄像头", use:"将来拍错题"},
+  {d:1.5, x:286, y:440, name:"A/B 键", use:"将来按出掌名和定义"},
+  {d:2.1, x:304, y:265, name:"板载屏", use:"将来显示题目·掌名"},
+];
+const HW_SCENE = `
+  <div class="num-big">02</div>
+  <div class="kick r" style="--d:.15s">硬件示意</div>
+  <div class="hw">
+    <figure class="hw-fig r" style="--d:.4s;margin:0">
+      <svg class="k10" viewBox="0 0 720 560" fill="none" role="img" aria-label="行空板 K10 正面简笔示意">
+        <rect class="bd" x="40" y="24" width="320" height="510" rx="36"/>
+        <g class="hl" style="--d:.9s"><circle class="part" cx="200" cy="92" r="17"/><circle class="dot" cx="200" cy="92" r="5.5"/></g>
+        <g class="hl" style="--d:1.5s"><circle class="part" cx="140" cy="440" r="26"/><circle class="part" cx="260" cy="440" r="26"/><text class="bl" x="140" y="449" text-anchor="middle">A</text><text class="bl" x="260" y="449" text-anchor="middle">B</text></g>
+        <g class="hl" style="--d:2.1s"><rect class="part scr" x="96" y="150" width="208" height="230" rx="12"/></g>
+        ${CALLOUTS.map((c) => `<g class="co" style="--d:${c.d}s"><circle class="co-dot" cx="${c.x}" cy="${c.y}" r="5"/><path class="co-line" d="M${c.x} ${c.y} H368"/><text class="co-txt" x="384" y="${c.y + 9}">${c.name}<tspan class="u" dx="14">${c.use}</tspan></text></g>`).join("")}
+      </svg>
+      <figcaption class="k10-cap">行空板 K10</figcaption>
+    </figure>
+    <div class="hw-side">
+      <h3 class="own-h r" style="--d:.5s">将由李赫愃用 Mind+ 积木制作</h3>
+      <ul class="own-l">
+        <li class="r" style="--d:.6s"><span class="no">①</span>按键拍照并在板载屏显示题目</li>
+        <li class="r" style="--d:.7s"><span class="no">②</span>A/B 键分别显示见龙在田、潜龙勿用及她写的定义</li>
+      </ul>
+    </div>
+  </div>`;
+// 各拍正式画面按票补全;无正式画面的拍用骨架占位。cover = 该景兼作的续拍,不另生景。
+const CONTENT = { 2: {html: HW_SCENE, cover: ["3"]} };
+const COVERED = new Set(
+  Object.values(CONTENT).flatMap((c) => (c.cover || []).map(Number)),
+);
 for (let b = 2; b < NB; b++) {
+  if (COVERED.has(b)) continue;
   const segName = BEATS[b].seg == null ? "问辩附页" : SEGMENTS[BEATS[b].seg];
   const sec = document.createElement("section");
   sec.className = "sc";
   sec.dataset.beat = b;
-  sec.innerHTML = `${BEATS[b].seg == null ? "" : `<div class="num-big">0${BEATS[b].seg + 1}</div>`}
+  const C = CONTENT[b];
+  if (C) {
+    sec.innerHTML = C.html;
+    if (C.cover) sec.dataset.cover = C.cover.join(" ");
+  } else {
+    sec.innerHTML = `${BEATS[b].seg == null ? "" : `<div class="num-big">0${BEATS[b].seg + 1}</div>`}
     <div class="kick r" style="--d:.2s">${segName}</div>
     <h2 class="ph-h r" style="--d:.4s">第 ${b} 拍</h2>
     <p class="ph-p r" style="--d:.7s">骨架占位 · 此拍画面在后续票补全</p>`;
+  }
   main.appendChild(sec);
 }
 // 已立掌名单:见龙在田、潜龙勿用。导轨小条与十八掌位完整阵列共用这同一份数据;
@@ -187,7 +258,11 @@ function go(n) {
   beat = clampBeat(n);
   const B = BEATS[beat];
   stage.dataset.beat = beat;
-  scenes.forEach((s) => s.classList.toggle("in", +s.dataset.beat === beat));
+  scenes.forEach((s) => {
+    const cont = (s.dataset.cover || "").split(" ").includes(String(beat));
+    s.classList.toggle("in", cont || +s.dataset.beat === beat);
+    s.classList.toggle("cont", cont);
+  });
   let pastCount = 0;
   segLis.forEach((li) => {
     const s = +li.dataset.seg;
@@ -199,7 +274,7 @@ function go(n) {
   // 进度线锚在轨顶下 20px:点亮段画到该段圆心,六段全过时画满整轨,导轨外拍(片头卡)为 0。
   prog.style.height = B.seg != null ? `${segLis[B.seg].offsetTop + 2}px`
     : pastCount === SEGMENTS.length ? `${railOl.clientHeight - 40}px` : "0px";
-  tent.textContent = B.tent || TENT_STD;
+  tent.textContent = (B.tag ? B.tag + "\n" : "") + (B.tent || TENT_STD);
   notebar.textContent = B.note || "";
   try {
     const u = new URL(location.href);
