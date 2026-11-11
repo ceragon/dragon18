@@ -9,7 +9,8 @@
 拍 4–5 见题(#41:演示题呈现 + 先判断作答拍)、拍 6 拆题·判断(#42:错因四选一作答拍
 + 答后 46 与 39 并排对比)、拍 7 演示回复块(#44:四要素槽位占位,待 #43 换真)、
 拍 8 正式版流程示意(#44:四节点管线)、拍 9–10 练习两拍(#45:引导练习四选一 +
-独立解题交数字,均为作答拍)已补全;拍 11–13 为骨架占位。
+独立解题交数字,均为作答拍)、拍 11 招式速查卡(#46:翻面定格收尾拍)已补全;
+拍 12–13 问辩附页为骨架占位。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -239,6 +240,24 @@ html,body{height:100%;background:#111;overflow:hidden}
 .sc.in.done .rv .eq .ar::before{transform:scaleX(1)}
 .sc.in.done .rv .eq .ar::after{opacity:1}
 .sc.in.done .rv .eq .ar em{opacity:1}
+
+/* ---------- 招式速查卡拍(拍 11) ---------- */
+.qc-box{perspective:1800px;margin-top:34px;display:grid;place-items:center}
+.qc-flip{width:1240px;height:620px;position:relative;transform-style:preserve-3d;transform:rotateY(180deg);
+ transition:transform 1.4s cubic-bezier(.3,1.2,.4,1) .5s}
+.sc.in .qc-flip{transform:rotateY(0)}
+.qc-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:26px;border:3px solid var(--navy)}
+.qc-back{background:var(--navy);transform:rotateY(180deg);display:grid;place-items:center;color:var(--sun);font:900 150px var(--serif);letter-spacing:.1em}
+.qc-front{background:var(--card);box-shadow:0 14px 0 var(--navy);padding:48px 60px}
+.qc-front .draft{position:absolute;right:52px;top:54px;margin-top:0}
+.qc-name{font:900 92px var(--serif);letter-spacing:.14em;line-height:1.15}
+.qc-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px 48px;margin-top:40px}
+.qc-cols dl.qc-wide{grid-column:1/3}
+.qc-cols dt{font:700 19px var(--sans);letter-spacing:.3em;color:var(--coral);margin-bottom:8px}
+.qc-cols dd{font-size:30px;line-height:1.55;font-weight:600}
+.qc-tags{position:absolute;left:60px;bottom:40px;display:flex;gap:14px}
+.qc-tag{font:700 20px var(--sans);letter-spacing:.12em;color:var(--teal);background:#0f8b8d18;border:1.5px solid var(--teal);border-radius:999px;padding:5px 18px}
+.qc-line{margin-top:30px;text-align:center;font:600 23px var(--sans);color:var(--mut);letter-spacing:.05em}
 
 /* ---------- 骨架占位拍(后续票补全) ---------- */
 .ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
@@ -563,6 +582,31 @@ const SOLO_SCENE = `
     <div class="rv-basis">验算：补角 140°、余角 50°，3×50−10 = 140 ✓</div>
     <div class="rv-basis">一次答对只核对本题，不称掌握。</div>
   </div>`;
+// 招式速查卡拍(#46):一次演示的收尾拍——翻面动效(3D rotateY,backface 隐藏的双面卡,
+// 入场自背面「掌」翻向正面)后定格,只出本次所教那一掌的完整卡。
+// 卡面四要素:掌名见龙在田、判断依据「题面写明的条件,按写明的顺序展开」、破解思路、
+// 本次易错点(把「共加收 3 元」用到了全部超 3 千米的 12 千米);知识点小标签「分段计费」,
+// 卡标「草稿 · 待确认」(速查卡文字未定,见规格 §8.1)。
+// 潜龙勿用只作卡下一行简短提示,待立掌位不出卡;定格收尾,无片尾卡。
+const CARD_SCENE = `
+  <div class="num-big">06</div>
+  <div class="kick r" style="--d:.15s">招式速查卡</div>
+  <div class="qc-box">
+    <div class="qc-flip">
+      <div class="qc-face qc-back">掌</div>
+      <div class="qc-face qc-front">
+        <span class="draft">草稿 · 待确认</span>
+        <h3 class="qc-name">见龙在田</h3>
+        <div class="qc-cols">
+          <dl><dt>判断依据</dt><dd>题面写明的条件，按写明的顺序展开</dd></dl>
+          <dl><dt>破解思路</dt><dd>按写明的顺序把每个条件各写成一步，逐步对着题面算下去</dd></dl>
+          <dl class="qc-wide"><dt>本次易错点</dt><dd>把「共加收 3 元」用到了全部超 3 千米的 12 千米——只有超 10 千米的部分才按每千米 3 元</dd></dl>
+        </div>
+        <div class="qc-tags"><span class="qc-tag">分段计费</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="qc-line r" style="--d:2.3s">另一掌 · 潜龙勿用：管「题面没写明、要自己找出」的条件，本次不展开；其余十六掌位待立，不出卡</p>`;
 // 各拍正式画面按票补全;无正式画面的拍用骨架占位。cover = 该景兼作的续拍,不另生景。
 const CONTENT = {
   2: {html: HW_SCENE, cover: ["3"]},
@@ -573,6 +617,7 @@ const CONTENT = {
   8: {html: FLOW_SCENE},
   9: {html: PRACTICE_SCENE},
   10: {html: SOLO_SCENE},
+  11: {html: CARD_SCENE},
 };
 const COVERED = new Set(
   Object.values(CONTENT).flatMap((c) => (c.cover || []).map(Number)),
