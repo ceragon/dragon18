@@ -9,8 +9,8 @@
 拍 4–5 见题(#41:演示题呈现 + 先判断作答拍)、拍 6 拆题·判断(#42:错因四选一作答拍
 + 答后 46 与 39 并排对比)、拍 7 演示回复块(#44:四要素槽位占位,待 #43 换真)、
 拍 8 正式版流程示意(#44:四节点管线)、拍 9–10 练习两拍(#45:引导练习四选一 +
-独立解题交数字,均为作答拍)、拍 11 招式速查卡(#46:翻面定格收尾拍)已补全;
-拍 12–13 问辩附页为骨架占位。
+独立解题交数字,均为作答拍)、拍 11 招式速查卡(#46:翻面定格收尾拍)、
+拍 12–13 问辩附页(#47:导轨外三样事实道具,提示词与真实输出占位待 #43 换真)已补全。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -259,6 +259,15 @@ html,body{height:100%;background:#111;overflow:hidden}
 .qc-tag{font:700 20px var(--sans);letter-spacing:.12em;color:var(--teal);background:#0f8b8d18;border:1.5px solid var(--teal);border-radius:999px;padding:5px 18px}
 .qc-line{margin-top:30px;text-align:center;font:600 23px var(--sans);color:var(--mut);letter-spacing:.05em}
 
+/* ---------- 问辩附页拍(拍 12–13) ---------- */
+.qa-docs{display:flex;gap:44px;margin-top:44px}
+.qa-doc{flex:1;min-width:0;background:var(--card);border:2.5px solid var(--navy);border-radius:18px;padding:28px 34px 32px;box-shadow:0 8px 0 var(--navy)}
+.qa-doc-h{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.qa-doc-t{font:900 30px var(--serif);letter-spacing:.04em}
+.qa-doc .fl-io{margin-top:18px}
+.qa-p{margin-top:18px;font-size:23px;line-height:1.75}
+.qa-slot{margin-top:18px;border:2px dashed var(--mut);border-radius:12px;padding:34px 24px;text-align:center;font:600 21px var(--sans);letter-spacing:.06em;color:var(--mut)}
+
 /* ---------- 骨架占位拍(后续票补全) ---------- */
 .ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
 .ph-p{font-size:28px;color:var(--mut);margin-top:26px}
@@ -501,19 +510,22 @@ const FLOW_NODES = [
    io:[["输入","题面 + 已立掌名单"],["输出","掌名 + 错因 + 要点"]]},
   {t:"掌名 + 错因", a:"正式版软件部分"},
 ];
-const FLOW_SCENE = `
-  <div class="num-big">04</div>
-  <div class="kick r" style="--d:.15s">拆题 · 正式版流程示意</div>
-  <div class="r" style="--d:.4s"><span class="draft">正式版流程 · 尚未实现</span></div>
+// 正式版管线渲染(#44 起,#47 复用):拍 8 示意拍与拍 12 问辩附页流程图道具画同一张图。
+const flowPipeline = (base) => `
   <div class="fl">
     ${FLOW_NODES.map((n, i) => `
-      ${i ? `<div class="fl-ar r" style="--d:${(0.45 + i * 0.5).toFixed(2)}s"></div>` : ""}
-      <div class="fl-n${n.io ? " api" : ""} r" style="--d:${(0.7 + i * 0.5).toFixed(2)}s">
+      ${i ? `<div class="fl-ar r" style="--d:${(base - 0.25 + i * 0.5).toFixed(2)}s"></div>` : ""}
+      <div class="fl-n${n.io ? " api" : ""} r" style="--d:${(base + i * 0.5).toFixed(2)}s">
         <span class="fl-t">${n.t}</span>
         <span class="fl-a">${n.a}</span>
         ${n.io ? `<div class="fl-io">${n.io.map(([k, v]) => `<div class="fl-io-r"><span class="io-k">${k}</span><span>${v}</span></div>`).join("")}</div>` : ""}
       </div>`).join("")}
-  </div>
+  </div>`;
+const FLOW_SCENE = `
+  <div class="num-big">04</div>
+  <div class="kick r" style="--d:.15s">拆题 · 正式版流程示意</div>
+  <div class="r" style="--d:.4s"><span class="draft">正式版流程 · 尚未实现</span></div>
+  ${flowPipeline(0.7)}
   <p class="fl-cap r" style="--d:2.5s">计划接入 DeepSeek 等国产大模型 API</p>`;
 // 练习·引导练习拍(#45):阶梯水费题面(规格 §5.2 原文)拆条件片落位,题面角标
 // 「演示数据」。选项四枚 66 / 42 / 45 / 52 等长、正解位不与拍 5/6 重复;选项延时
@@ -607,6 +619,43 @@ const CARD_SCENE = `
     </div>
   </div>
   <p class="qc-line r" style="--d:2.3s">另一掌 · 潜龙勿用：管「题面没写明、要自己找出」的条件，本次不展开；其余十六掌位待立，不出卡</p>`;
+// 问辩附页(#47):速查卡后的两拍普通拍,导轨外(seg:null),常驻小标「问辩备查 ·
+// 不在正式演示流程内」——只摆事实道具帮李赫愃讲,不写答词。
+// 拍 12 道具一「正式版流程图」:与拍 8 同一张正式版管线图,标「正式版流程 · 尚未实现」。
+const QA_FLOW_SCENE = `
+  <div class="kick r" style="--d:.15s">问辩附页</div>
+  <h2 class="jt-h r" style="--d:.35s">正式版流程图</h2>
+  <div class="r" style="--d:.5s"><span class="draft">正式版流程 · 尚未实现</span></div>
+  ${flowPipeline(0.7)}
+  <p class="fl-cap r" style="--d:2.7s">计划接入 DeepSeek 等国产大模型 API</p>`;
+// 拍 13 道具二三「提示词全文」「DeepSeek 真实输出 · 演示时预置播放」说明:
+// 两格先放占位,标「占位 · 待换真实输出」,#43 真调冻结后换入库原文引用。
+// 提示词形状已定(输入「题面 + 已立掌名单」→ 输出「掌名 + 错因 + 要点」),全文未定;
+// 输出说明只写事实:演示现场不发请求,回复 = 真调一次冻结的输出,原文随规格入库。
+const QA_DOCS_SCENE = `
+  <div class="kick r" style="--d:.15s">问辩附页</div>
+  <h2 class="jt-h r" style="--d:.35s">提示词全文 · 真实输出说明</h2>
+  <div class="qa-docs">
+    <section class="qa-doc r" style="--d:.6s">
+      <div class="qa-doc-h">
+        <h3 class="qa-doc-t">提示词全文</h3>
+        <span class="ph-badge">占位 · 待换真实输出</span>
+      </div>
+      <div class="fl-io">
+        <div class="fl-io-r"><span class="io-k">输入</span><span>题面 + 已立掌名单</span></div>
+        <div class="fl-io-r"><span class="io-k">输出</span><span>掌名 + 错因 + 要点</span></div>
+      </div>
+      <div class="qa-slot">提示词全文占位——真调 DeepSeek 后换入库原文引用</div>
+    </section>
+    <section class="qa-doc r" style="--d:.9s">
+      <div class="qa-doc-h">
+        <h3 class="qa-doc-t">DeepSeek 真实输出 · 演示时预置播放</h3>
+        <span class="ph-badge">占位 · 待换真实输出</span>
+      </div>
+      <p class="qa-p">演示现场不发请求——演示回复是用正式版计划的提示词真调一次冻结的输出，提示词原文与模型原始输出随规格入库。</p>
+      <div class="qa-slot">模型原始输出占位——入库后在此引用原文</div>
+    </section>
+  </div>`;
 // 各拍正式画面按票补全;无正式画面的拍用骨架占位。cover = 该景兼作的续拍,不另生景。
 const CONTENT = {
   2: {html: HW_SCENE, cover: ["3"]},
@@ -618,6 +667,8 @@ const CONTENT = {
   9: {html: PRACTICE_SCENE},
   10: {html: SOLO_SCENE},
   11: {html: CARD_SCENE},
+  12: {html: QA_FLOW_SCENE},
+  13: {html: QA_DOCS_SCENE},
 };
 const COVERED = new Set(
   Object.values(CONTENT).flatMap((c) => (c.cover || []).map(Number)),
