@@ -5,7 +5,8 @@
 <title>见题拆题之降题十八掌 · 软件 Demo</title>
 <!--
 拍引擎与舞台骨架(issue #38):片头卡 + 六段导轨 + 拍引擎 + 键盘推进 + ?beat=N 直达
-+ 1920×1080 等比缩放纯舞台。拍 1 使命开场(#39)、拍 2–3 硬件示意(#40)已补全;拍 4–13 为骨架占位。
++ 1920×1080 等比缩放纯舞台。拍 1 使命开场(#39)、拍 2–3 硬件示意(#40)、
+拍 4–5 见题(#41:演示题呈现 + 先判断作答拍)已补全;拍 6–13 为骨架占位。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -104,6 +105,66 @@ html,body{height:100%;background:#111;overflow:hidden}
 .own-l li{display:flex;gap:16px;font-size:26px;line-height:1.75;margin-top:16px}
 .own-l .no{flex:none;font-weight:700;color:var(--coral)}
 
+/* ---------- 见题·呈现拍(拍 4) ---------- */
+.prob{position:relative;margin-top:30px;background:var(--card);border:2.5px solid var(--navy);border-radius:18px;padding:26px 34px 20px;box-shadow:0 8px 0 var(--navy)}
+.prob .corner{position:absolute;right:-2.5px;top:-2.5px;background:var(--sun);border:2.5px solid var(--navy);border-radius:0 15px 0 14px;font:700 18px var(--sans);letter-spacing:.12em;padding:6px 18px}
+.ptext{font-size:25px;line-height:1.7}
+.chips{display:flex;gap:18px;flex-wrap:wrap;margin-top:24px}
+.chip{position:relative;background:var(--card);border:2.5px solid var(--navy);border-radius:14px;padding:12px 20px;font-size:24px;font-weight:600;box-shadow:0 6px 0 var(--navy)}
+.chip b{position:absolute;left:-12px;top:-15px;width:32px;height:32px;border-radius:50%;background:var(--sun);border:2.5px solid var(--navy);font:900 17px var(--sans);display:grid;place-items:center}
+.pcap{margin-top:14px;font:600 17px var(--sans);color:var(--mut);letter-spacing:.08em}
+.wrong{display:flex;align-items:center;gap:26px;margin-top:36px}
+.wrong .lab{flex:none;font:700 20px var(--sans);color:var(--coral);letter-spacing:.1em;border:1.5px dashed var(--coral);border-radius:999px;padding:8px 20px}
+.eq{display:flex;align-items:center}
+.eq .n{min-width:96px;height:68px;padding:0 22px;border-radius:34px;display:grid;place-items:center;font:900 36px var(--serif);background:var(--card);border:2.5px solid var(--navy);
+ opacity:0;transform:scale(.5);transition:opacity .5s var(--d,0s),transform .6s cubic-bezier(.3,1.6,.5,1) var(--d,0s)}
+.sc.in .eq .n{opacity:1;transform:none}
+.eq .n.end{background:var(--coral);border-color:var(--coral);color:#fff}
+.eq .ar{width:170px;height:68px;position:relative}
+.eq .ar::before{content:"";position:absolute;left:0;top:33px;height:3px;width:calc(100% - 14px);background:var(--navy);transform-origin:left;transform:scaleX(0);transition:transform .7s cubic-bezier(.6,0,.2,1) var(--d,0s)}
+.eq .ar::after{content:"";position:absolute;right:0;top:26px;border-left:14px solid var(--navy);border-top:8px solid transparent;border-bottom:8px solid transparent;opacity:0;transition:opacity .2s calc(var(--d,0s) + .6s)}
+.sc.in .eq .ar::before{transform:scaleX(1)}
+.sc.in .eq .ar::after{opacity:1}
+.eq .ar em{position:absolute;left:0;right:0;top:0;text-align:center;font:700 26px var(--sans);font-style:normal;opacity:0;transition:opacity .3s calc(var(--d,0s) + .4s)}
+.sc.in .eq .ar em{opacity:1}
+.lead{position:absolute;left:110px;bottom:56px;font:600 28px var(--sans);color:var(--mut);letter-spacing:.04em}
+
+/* ---------- 见题·判断拍(拍 5) ---------- */
+.jt-h{font:900 52px var(--serif);letter-spacing:.04em;margin-top:14px}
+.opts{display:flex;gap:20px;margin-top:40px}
+.opt{flex:1;display:flex;align-items:center;gap:18px;background:var(--card);border:2.5px solid var(--navy);border-radius:16px;padding:22px 26px;box-shadow:0 8px 0 var(--navy);font:700 34px var(--sans);color:var(--navy);text-align:left;cursor:pointer;
+ transition:transform .25s cubic-bezier(.3,1.6,.5,1),box-shadow .25s,background .3s,opacity .3s}
+.opt .k{flex:none;width:44px;height:44px;border-radius:50%;background:var(--sun);display:grid;place-items:center;font:900 20px var(--sans);font-style:normal;color:var(--navy)}
+.opt:not(:disabled):hover{transform:translateY(-8px);box-shadow:0 16px 0 var(--navy)}
+.opt:not(:disabled):active{transform:translateY(4px);box-shadow:0 3px 0 var(--navy)}
+.opt.ok{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 8px 0 #0a5c5d;animation:hopC .6s}
+.opt.bad{background:#fde3dc;border-color:var(--coral);box-shadow:0 8px 0 var(--coral);animation:shakeC .45s}
+.opt:disabled{cursor:default}
+.opt:disabled:not(.ok):not(.bad){opacity:.5}
+@keyframes hopC{30%{transform:translateY(-26px) scale(1.04)}60%{transform:translateY(0) scale(.98)}}
+@keyframes shakeC{20%{transform:translateX(-14px)}50%{transform:translateX(12px)}80%{transform:translateX(-5px)}}
+.fb{margin-top:24px;min-height:50px;font-size:25px;line-height:1.6;padding-left:20px;border-left:8px solid transparent}
+.fb.ok{border-color:var(--teal)}
+.fb.bad{border-color:var(--coral)}
+.fb b{margin-right:10px;color:var(--teal)}
+.fb.bad b{color:var(--coral)}
+.rv{margin-top:20px;background:var(--card);border:2.5px solid var(--navy);border-radius:18px;padding:24px 32px;box-shadow:0 8px 0 var(--navy);
+ opacity:0;visibility:hidden;transform:translateY(24px);transition:opacity .5s,transform .7s cubic-bezier(.2,1.1,.3,1),visibility 0s .6s}
+.sc.done .rv{opacity:1;visibility:visible;transform:none;transition:opacity .55s .1s,transform .75s cubic-bezier(.2,1.1,.3,1) .1s}
+.rv-h{font:900 34px var(--serif)}
+.rv-h b{color:var(--teal)}
+.rv-basis{margin-top:8px;font-size:23px;color:var(--mut)}
+.rv-per{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.rv-per li{font-size:23px;line-height:1.55}
+.rv-per b{margin-right:12px}
+.p18 i{position:relative}
+.p18 i.focus{box-shadow:0 0 0 5px var(--sun)}
+.p18 i.also{box-shadow:0 0 0 4px var(--teal)}
+.p18 i.linked{border-style:solid;border-color:var(--mut);color:var(--mut)}
+.p18 i .tagx{position:absolute;top:-16px;right:-16px;font:700 15px var(--sans);letter-spacing:.05em;background:var(--sun);border:2px solid var(--navy);border-radius:99px;padding:2px 10px;color:var(--navy);white-space:nowrap}
+.p18 i.also .tagx{background:var(--teal);border-color:var(--teal);color:#fff}
+.p18 i.linked .tagx{background:var(--mut);border-color:var(--mut);color:#fff}
+
 /* ---------- 骨架占位拍(后续票补全) ---------- */
 .ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
 .ph-p{font-size:28px;color:var(--mut);margin-top:26px}
@@ -157,7 +218,7 @@ const BEATS = [
   {seg:0},                             // 1  使命开场
   HW,                                  // 2  硬件示意:整板轮廓+归属清单
   HW,                                  // 3  硬件示意:同屏续拍,三条引出线依次高亮
-  {seg:2},{seg:2},                     // 4–5 见题(5 为作答拍)
+  {seg:2},{seg:2, gate:true},          // 4–5 见题(5 为作答拍)
   {seg:3},{seg:3},{seg:3},             // 6–8 拆题(6 为作答拍)
   {seg:4},{seg:4},                     // 9–10 练习(9、10 为作答拍)
   {seg:5},                             // 11 招式速查卡
@@ -205,8 +266,69 @@ const HW_SCENE = `
       </ul>
     </div>
   </div>`;
+// 见题·呈现拍(#41):题面(规格 §5.1 原文)拆条件片逐个落位;演示错法块连线算式逐步画出;
+// 题面角标「演示数据」+ 小标行空板拍照采集;十八掌位完整展示段;底部引句收尾。
+const MEET_SCENE = `
+  <div class="num-big">03</div>
+  <div class="kick r" style="--d:.15s">见题 · 演示题</div>
+  <div class="prob">
+    <span class="corner">演示数据</span>
+    <p class="ptext r" style="--d:.3s">某市出租车收费标准：3 千米以内（含 3 千米）收起步价 10 元；超过 3 千米的部分，每千米加收 2 元；超过 10 千米的部分，每千米再多加收 1 元，也就是每千米共加收 3 元。小李乘车 15 千米，应付多少元？</p>
+    <div class="chips">
+      <div class="chip r" style="--d:.8s"><b>①</b>3 千米以内（含 3 千米）收起步价 10 元</div>
+      <div class="chip r" style="--d:1.05s"><b>②</b>超过 3 千米的部分，每千米加收 2 元</div>
+      <div class="chip r" style="--d:1.3s"><b>③</b>超过 10 千米的部分，每千米共加收 3 元</div>
+      <div class="chip r" style="--d:1.55s"><b>④</b>小李乘车 15 千米，应付多少元？</div>
+    </div>
+    <p class="pcap r" style="--d:1.8s">示意：此题将来由行空板拍照采集</p>
+  </div>
+  <div class="wrong">
+    <span class="lab r" style="--d:2s">演示错法 · 演示数据</span>
+    <div class="eq">
+      <span class="n" style="--d:2.1s">10</span>
+      <span class="ar" style="--d:2.35s"><em>+</em></span>
+      <span class="n" style="--d:2.7s">(15−3)×3</span>
+      <span class="ar" style="--d:2.95s"><em>=</em></span>
+      <span class="n end" style="--d:3.3s">46</span>
+    </div>
+  </div>
+  <div class="p18" id="p18-4" aria-label="十八掌位"></div>
+  <p class="lead r" style="--d:5s">先看这道题涉及哪一掌</p>`;
+// 见题·判断拍(#41):先判断再揭晓。选项三枚等长、正解不占固定首位(各拍正解位不同);
+// 选错标错并可重选,选定见龙在田才落定解锁;揭晓 = 本次重点 + 判断依据 + 逐项解释。
+// verdict = 见题输出(focus/basis/also/none/per 逐项解释,见 applyVerdict 规则);
+// per 兼作每次选择的即时反馈文案。
+const JUDGE = {
+  opts: ["潜龙勿用", "见龙在田", "暂无对应的掌"],
+  ok: 1,
+  verdict: {
+    focus: "见龙在田",
+    basis: "题面写明的条件，按写明的顺序展开——收费标准逐段写明，该落这一掌。",
+    also: [],
+    none: false,
+    per: {
+      "潜龙勿用": "潜龙勿用管的是题面没写明、要自己找出的条件——本题的量都在字面上，不缺。",
+      "见龙在田": "题面把每段收费的条件和顺序都写明了，按写明的顺序展开就行。",
+      "暂无对应的掌": "这道题能落在已立的掌上；若某题真无掌适用，此选项会关联一个灰色「待立」掌位。",
+    },
+  },
+};
+const JUDGE_SCENE = `
+  <div class="num-big">03</div>
+  <div class="kick r" style="--d:.15s">见题 · 先判断</div>
+  <h2 class="jt-h r" style="--d:.35s">这道题涉及哪一掌？</h2>
+  <div class="p18 r" id="p18-5" style="--d:.6s" aria-label="十八掌位"></div>
+  <div class="opts r" style="--d:2.2s">
+    ${JUDGE.opts.map((o, i) => `<button class="opt" data-i="${i}" aria-label="${o}"><i class="k" aria-hidden="true">${"ABC"[i]}</i><span>${o}</span></button>`).join("")}
+  </div>
+  <div class="fb" aria-live="polite"></div>
+  <div class="rv"></div>`;
 // 各拍正式画面按票补全;无正式画面的拍用骨架占位。cover = 该景兼作的续拍,不另生景。
-const CONTENT = { 2: {html: HW_SCENE, cover: ["3"]} };
+const CONTENT = {
+  2: {html: HW_SCENE, cover: ["3"]},
+  4: {html: MEET_SCENE},
+  5: {html: JUDGE_SCENE},
+};
 const COVERED = new Set(
   Object.values(CONTENT).flatMap((c) => (c.cover || []).map(Number)),
 );
@@ -235,7 +357,7 @@ document.querySelector(".mini18").innerHTML =
   Array.from({length: 18}, (_, i) =>
     i < PALMS.length ? `<i class="lit">${PALMS[i][0]}</i>` : "<i> </i>").join("");
 // 十八掌位完整阵列:已立掌深蓝亮起,其余虚线灰显「待立」;--d 逐格落定。
-// 使命开场与见题两拍共用,见题拍(#40+)填充时复用。
+// 使命开场与见题两拍共用,见题拍(#41)填充时复用。
 const fillP18 = (el, base) => {
   el.innerHTML = Array.from({length: 18}, (_, i) => {
     const d = `--d:${(base + i * 0.07).toFixed(2)}s`;
@@ -243,7 +365,70 @@ const fillP18 = (el, base) => {
   }).join("");
 };
 fillP18(document.getElementById("p18-1"), 0.9);
+fillP18(document.getElementById("p18-4"), 3.4);
+fillP18(document.getElementById("p18-5"), 0.9);
 const scenes = [...document.querySelectorAll(".sc")];
+
+// 见题输出规则(#41):一掌为本次重点(focus 格标「本次重点」);另有相关掌标「也涉及」(also);
+// 无掌适用时显示「暂无对应的掌」并关联一个灰色待立掌位(none)。不打每掌把握度。
+// 主线 verdict 只落见龙在田,also/none 两路在主线不触发。重用时先清旧标记再应用。
+function applyVerdict(v, sc) {
+  const cells = [...sc.querySelectorAll(".p18 i")];
+  cells.forEach((c) => {
+    c.classList.remove("focus", "also", "linked");
+    c.querySelectorAll(".tagx").forEach((t) => t.remove());
+  });
+  const tag = (txt) => `<em class="tagx">${txt}</em>`;
+  const cell = (name) => cells.find((c) => c.textContent === name);
+  if (v.none) {
+    const idle = cell("待立");
+    if (idle) {
+      idle.classList.add("linked");
+      idle.insertAdjacentHTML("beforeend", tag("暂无对应的掌"));
+    }
+  } else {
+    const focus = cell(v.focus);
+    if (focus) {
+      focus.classList.add("focus");
+      focus.insertAdjacentHTML("beforeend", tag("本次重点"));
+    }
+    (v.also || []).forEach((name) => {
+      const c = cell(name);
+      if (c) {
+        c.classList.add("also");
+        c.insertAdjacentHTML("beforeend", tag("也涉及"));
+      }
+    });
+  }
+  const rv = sc.querySelector(".rv");
+  if (rv) {
+    const per = Object.entries(v.per || {});
+    rv.innerHTML = `
+      <div class="rv-h">${v.none ? "暂无对应的掌" : `本次重点：<b>${v.focus}</b>`}</div>
+      ${v.basis ? `<div class="rv-basis">判断依据：${v.basis}</div>` : ""}
+      ${per.length ? `<ul class="rv-per">${per.map(([o, t]) => `<li><b>${o}</b>${t}</li>`).join("")}</ul>` : ""}`;
+  }
+}
+// 作答拍(#41):点击只用于作答拍。选错标 bad 并可重选、即时带该项解释;选对标 ok 才落定
+// (done 写入 → 前进解锁),全部选项停用并按 verdict 揭晓。元素在景内常驻,状态随 DOM 保留。
+function pick(btn) {
+  const sc = btn.closest(".sc");
+  const b = +sc.dataset.beat;
+  if (done[b]) return;
+  const i = +btn.dataset.i;
+  const ok = i === JUDGE.ok;
+  btn.classList.add(ok ? "ok" : "bad");
+  btn.disabled = true;
+  const fb = sc.querySelector(".fb");
+  fb.className = `fb ${ok ? "ok" : "bad"}`;
+  fb.innerHTML = `<b>${ok ? "对" : "再想想"}</b>${JUDGE.verdict.per[JUDGE.opts[i]]}`;
+  if (ok) {
+    done[b] = true;
+    sc.querySelectorAll(".opt").forEach((o) => (o.disabled = true));
+    applyVerdict(JUDGE.verdict, sc);
+    sc.classList.add("done");
+  }
+}
 
 const params = new URLSearchParams(location.search);
 const clampBeat = (n) => Math.max(0, Math.min(NB - 1, Number.isFinite(n) ? n : 0));
@@ -262,6 +447,7 @@ function go(n) {
     const cont = (s.dataset.cover || "").split(" ").includes(String(beat));
     s.classList.toggle("in", cont || +s.dataset.beat === beat);
     s.classList.toggle("cont", cont);
+    s.classList.toggle("done", !!done[+s.dataset.beat]);
   });
   let pastCount = 0;
   segLis.forEach((li) => {
@@ -290,6 +476,10 @@ addEventListener("keydown", (e) => {
   if (e.target.matches("input,textarea,select,[contenteditable]")) return;
   if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); step(1); }
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); step(-1); }
+});
+stage.addEventListener("click", (e) => {
+  const o = e.target.closest(".opt");
+  if (o && BEATS[beat].gate) pick(o);
 });
 function fit() {
   scaler.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`;
