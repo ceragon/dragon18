@@ -1,128 +1,193 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <title>软件 Demo</title>
-  <style>
-    html, body {
-      margin: 0;
-      background: #fff;
-      color: #000;
-    }
-    body {
-      font: 20px/1.6 "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
-      padding: 32px 24px 48px;
-      max-width: 40rem;
-    }
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0 0 16px;
-    }
-    h2 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin: 24px 0 8px;
-    }
-    p {
-      margin: 0 0 12px;
-    }
-    figure {
-      margin: 0 0 16px;
-    }
-    figcaption {
-      margin-top: 8px;
-    }
-    .board {
-      width: 168px;
-      height: 260px;
-      border: 2px solid #000;
-      box-sizing: border-box;
-      padding: 18px 16px;
-    }
-    .board-screen {
-      height: 132px;
-      border: 2px solid #000;
-      box-sizing: border-box;
-    }
-    .board-button {
-      width: 28px;
-      height: 28px;
-      margin: 22px auto 0;
-      border: 2px solid #000;
-      border-radius: 50%;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 20px;
-      background: #fff;
-      color: #000;
-      border: 1px solid #000;
-      font: inherit;
-      padding: 8px 20px;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="utf-8">
+<title>见题拆题之降题十八掌 · 软件 Demo</title>
+<!--
+拍引擎与舞台骨架(issue #38):片头卡 + 六段导轨 + 拍引擎 + 键盘推进 + ?beat=N 直达
++ 1920×1080 等比缩放纯舞台。拍 1–13 为骨架占位,内容在后续票(#39–#47)补全。
+URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#111;overflow:hidden}
+#vp{position:fixed;inset:0;overflow:hidden}
+#scaler{position:absolute;left:50%;top:50%;width:1920px;height:1080px;margin:-540px 0 0 -960px;transform-origin:center center}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--navy);
+ --bg:#f4f1ea;--card:#fffdf8;--navy:#14213d;--mut:#6b7385;--line:#d9d3c5;--coral:#ef5b3f;--teal:#0f8b8d;--sun:#ffc43d;
+ --serif:"Songti SC","STSong","SimSun","Noto Serif CJK SC","Source Han Serif SC",serif;
+ --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+ font-family:var(--sans)}
+.stage[data-record="1"],.stage[data-record="1"] *{cursor:none}
+.stage::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+ background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+ background-size:60px 60px;mask-image:radial-gradient(ellipse at 60% 50%,#000 20%,transparent 80%)}
+
+/* ---------- 六段导轨(常驻) ---------- */
+.rail{position:absolute;left:0;top:0;bottom:0;width:380px;background:var(--navy);color:#e9e4d6;padding:80px 50px;z-index:10;display:flex;flex-direction:column}
+.rail .logo{font:900 44px var(--serif);letter-spacing:.14em;line-height:1.3;color:#fff}
+.rail .logo small{display:block;font:600 16px var(--sans);letter-spacing:.3em;color:#8d97b3;margin-top:10px}
+.rail ol{list-style:none;margin-top:70px;position:relative}
+.rail ol::before{content:"";position:absolute;left:21px;top:20px;bottom:20px;width:3px;background:#2d3b61}
+.rail .prog{position:absolute;left:21px;top:20px;width:3px;height:0;background:var(--sun);transition:height 1.2s cubic-bezier(.7,0,.2,1)}
+.rail li{position:relative;height:86px;display:flex;align-items:flex-start;gap:26px;font-size:30px;color:#8d97b3;transition:color .5s}
+.rail li i{flex:none;width:44px;height:44px;border-radius:50%;background:var(--navy);border:3px solid #2d3b61;display:grid;place-items:center;font:700 18px var(--sans);font-style:normal;z-index:1;transition:all .6s}
+.rail li span{padding-top:5px}
+.rail li.past{color:#e9e4d6}
+.rail li.past i{background:var(--sun);border-color:var(--sun);color:var(--navy)}
+.rail li.on{color:#fff;font-weight:700}
+.rail li.on i{background:#fff;border-color:var(--sun);color:var(--navy);transform:scale(1.2);box-shadow:0 0 0 8px #ffc43d44}
+.mini18{margin-top:auto;display:grid;grid-template-columns:repeat(9,22px);gap:8px}
+.mini18 i{width:22px;height:22px;border-radius:6px;border:2px dashed #8d97b355;display:grid;place-items:center;font:700 12px var(--serif);font-style:normal;color:transparent}
+.mini18 i.lit{background:var(--sun);border-color:var(--sun);color:var(--navy)}
+.tent{margin-top:34px;font:600 16px var(--sans);color:#8d97b3;letter-spacing:.12em;line-height:1.8;word-break:keep-all}
+
+/* ---------- 主区:每拍一景 ---------- */
+.main{position:absolute;left:380px;top:0;right:0;bottom:0}
+.notebar{position:absolute;left:110px;right:110px;top:44px;min-height:30px;font:600 22px var(--sans);color:var(--mut);letter-spacing:.04em;z-index:5}
+.sc{position:absolute;inset:0;padding:120px 110px 90px;opacity:0;visibility:hidden;transform:translateY(40px);
+ transition:opacity .5s,transform .8s cubic-bezier(.2,.8,.2,1),visibility 0s .6s}
+.sc.in{opacity:1;visibility:visible;transform:none;
+ transition:opacity .7s .35s,transform .9s cubic-bezier(.2,.8,.2,1) .35s}
+.r{opacity:0;transform:translateY(26px);transition:opacity .6s var(--d,0s),transform .8s cubic-bezier(.2,1.1,.3,1) var(--d,0s)}
+.sc.in .r{opacity:1;transform:none}
+.num-big{position:absolute;right:90px;top:20px;font:900 380px var(--serif);color:#14213d0d;letter-spacing:-.04em;pointer-events:none}
+.kick{font:700 22px var(--sans);letter-spacing:.3em;color:var(--coral);margin-bottom:14px}
+
+/* ---------- 片头卡(拍 0) ---------- */
+.sc.title{display:grid;place-items:center}
+.tc{text-align:center}
+.tc-name{font:900 96px var(--serif);letter-spacing:.08em;line-height:1.2}
+.tc-who{font-size:44px;font-weight:700;letter-spacing:.2em;margin-top:36px}
+.tc-decl{display:inline-block;margin-top:64px;font:700 20px var(--sans);letter-spacing:.18em;color:var(--mut);border:1.5px dashed var(--mut);border-radius:999px;padding:10px 28px}
+.tc-attr{margin-top:46px;font-size:22px;color:var(--mut);letter-spacing:.06em}
+
+/* ---------- 骨架占位拍(后续票补全) ---------- */
+.ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
+.ph-p{font-size:28px;color:var(--mut);margin-top:26px}
+</style>
 </head>
 <body>
-  <main>
-    <section>
-      <h1>硬件示意</h1>
-      <figure>
-        <div class="board" aria-hidden="true">
-          <div class="board-screen"></div>
-          <div class="board-button"></div>
-        </div>
-        <figcaption>行空板</figcaption>
-      </figure>
-      <p>行空板将来负责拍照，并在板载屏上显示这道题。</p>
-      <button type="button">下一屏</button>
+<div id="vp"><div id="scaler"><div id="stage" class="stage">
+  <aside class="rail">
+    <div class="logo">降题<br>十八掌<small>见题拆题</small></div>
+    <ol><li class="prog" aria-hidden="true"></li>
+      <li data-seg="0"><i>1</i><span>使命开场</span></li>
+      <li data-seg="1"><i>2</i><span>硬件示意</span></li>
+      <li data-seg="2"><i>3</i><span>见题</span></li>
+      <li data-seg="3"><i>4</i><span>拆题</span></li>
+      <li data-seg="4"><i>5</i><span>练习</span></li>
+      <li data-seg="5"><i>6</i><span>招式速查卡</span></li>
+    </ol>
+    <div class="mini18" aria-hidden="true"></div>
+    <div class="tent" id="tent"></div>
+  </aside>
+  <div class="main">
+    <header class="notebar" id="notebar"></header>
+    <section class="sc title" data-beat="0">
+      <div class="tc">
+        <h1 class="tc-name r" style="--d:.3s">见题拆题之降题十八掌</h1>
+        <div class="tc-who r" style="--d:.8s">李赫愃·海淀实验</div>
+        <div class="r" style="--d:1.3s"><span class="tc-decl">演示数据 · 预置回复 · 硬件示意</span></div>
+        <div class="tc-attr r" style="--d:1.8s">演示 Demo 由家长协助制作，参赛程序由李赫愃本人编写</div>
+      </div>
     </section>
-    <section hidden>
-      <h1>演示题</h1>
-      <p>演示数据</p>
-      <p>一件上衣标价 200 元。商店先按标价打八折，再降价 20 元出售。售价是多少元？</p>
-      <p>学生的错法是先降价再打折，答成 (200−20)×0.8 = 144 元。</p>
-      <button type="button">下一屏</button>
-    </section>
-    <section hidden>
-      <h1>见题拆题</h1>
-      <p>演示数据</p>
-      <p>掌名是见龙在田。</p>
-      <p>题里两步的顺序是先打八折，再降价 20 元。</p>
-      <p>144 元的每一步乘法都对，但顺序反了。</p>
-      <p>先 200×0.8 = 160，再 160−20 = 140，售价是 140 元。</p>
-      <button type="button">下一屏</button>
-    </section>
-    <section hidden>
-      <h1>一错破一类</h1>
-      <p>演示数据</p>
-      <h2>训练题一</h2>
-      <p>一双鞋标价 250 元。商店先按标价打八折，再降价 40 元。售价是多少元？</p>
-      <p>正确答案是 160 元。</p>
-      <h2>训练题二</h2>
-      <p>一根绳子长 50 米。先用去它的一半，再用去 6 米。还剩多少米？</p>
-      <p>正确答案是 19 米。</p>
-    </section>
-  </main>
-  <script>
-    const screens = Array.from(document.querySelectorAll("main > section"));
+  </div>
+</div></div></div>
+<script>
+const SEGMENTS = ["使命开场","硬件示意","见题","拆题","练习","招式速查卡"];
+const TENT_STD = "招式体系暂定 · 孩子未确认 · 演示数据";
+const TENT_QA  = "问辩备查 · 不在正式演示流程内";
+// 拍序:seg = 点亮段(null = 导轨外);gate 作答拍在后续票接上选项后开启;
+// note 说明条与 notes 解说词草稿逐拍留槽位,文案未定(#49 唤出)。
+const BEATS = [
+  {seg:null},                          // 0  片头卡(导轨外)
+  {seg:0},                             // 1  使命开场
+  {seg:1},{seg:1},                     // 2–3 硬件示意
+  {seg:2},{seg:2},                     // 4–5 见题(5 为作答拍)
+  {seg:3},{seg:3},{seg:3},             // 6–8 拆题(6 为作答拍)
+  {seg:4},{seg:4},                     // 9–10 练习(9、10 为作答拍)
+  {seg:5},                             // 11 招式速查卡
+  {seg:null,tent:TENT_QA},             // 12 问辩附页(导轨外)
+  {seg:null,tent:TENT_QA},             // 13 问辩附页(导轨外)
+];
+const NB = BEATS.length;
+const segLast = SEGMENTS.map((_, s) => Math.max(...BEATS.map((b, i) => (b.seg === s ? i : -1))));
 
-    function show(index) {
-      screens.forEach((section, i) => {
-        section.hidden = i !== index;
-      });
-    }
+const stage = document.getElementById("stage");
+const scaler = document.getElementById("scaler");
+const tent = document.getElementById("tent");
+const notebar = document.getElementById("notebar");
+const prog = document.querySelector(".rail .prog");
+const railOl = document.querySelector(".rail ol");
+const segLis = [...document.querySelectorAll(".rail li[data-seg]")];
+const main = document.querySelector(".main");
 
-    show(0);
+// 占位景:拍 1–13 的画面槽位,后续票替换为正式内容。
+for (let b = 1; b < NB; b++) {
+  const segName = BEATS[b].seg == null ? "问辩附页" : SEGMENTS[BEATS[b].seg];
+  const sec = document.createElement("section");
+  sec.className = "sc";
+  sec.dataset.beat = b;
+  sec.innerHTML = `${BEATS[b].seg == null ? "" : `<div class="num-big">0${BEATS[b].seg + 1}</div>`}
+    <div class="kick r" style="--d:.2s">${segName}</div>
+    <h2 class="ph-h r" style="--d:.4s">第 ${b} 拍</h2>
+    <p class="ph-p r" style="--d:.7s">骨架占位 · 此拍画面在后续票补全</p>`;
+  main.appendChild(sec);
+}
+document.querySelector(".mini18").innerHTML =
+  Array.from({length: 18}, (_, i) => `<i${i === 0 ? ' class="lit">见' : i === 1 ? ' class="lit">潜' : ">"} </i>`).join("");
+const scenes = [...document.querySelectorAll(".sc")];
 
-    document.body.addEventListener("click", (event) => {
-      const button = event.target.closest("button");
-      if (!button || button.textContent !== "下一屏") return;
-      const current = screens.findIndex((section) => !section.hidden);
-      if (current < 0 || current >= screens.length - 1) return;
-      show(current + 1);
-    });
-  </script>
+const params = new URLSearchParams(location.search);
+const clampBeat = (n) => Math.max(0, Math.min(NB - 1, Number.isFinite(n) ? n : 0));
+let beat = clampBeat(parseInt(params.get("beat") || "0", 10));
+const done = {}; // 作答拍落定状态,后续票在作答交互里写入
+
+function gated() {
+  const b = BEATS[beat];
+  return !!(b.gate && !done[beat]);
+}
+function go(n) {
+  beat = clampBeat(n);
+  const B = BEATS[beat];
+  stage.dataset.beat = beat;
+  scenes.forEach((s) => s.classList.toggle("in", +s.dataset.beat === beat));
+  let pastCount = 0;
+  segLis.forEach((li) => {
+    const s = +li.dataset.seg;
+    const past = beat > segLast[s];
+    pastCount += past ? 1 : 0;
+    li.classList.toggle("on", B.seg === s);
+    li.classList.toggle("past", past);
+  });
+  // 进度线锚在轨顶下 20px:点亮段画到该段圆心,六段全过时画满整轨,导轨外拍(片头卡)为 0。
+  prog.style.height = B.seg != null ? `${segLis[B.seg].offsetTop + 2}px`
+    : pastCount === SEGMENTS.length ? `${railOl.clientHeight - 40}px` : "0px";
+  tent.textContent = B.tent || TENT_STD;
+  notebar.textContent = B.note || "";
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("beat", beat);
+    history.replaceState(null, "", u);
+  } catch (e) {}
+}
+function step(d) {
+  if (d > 0 && gated()) return;
+  go(beat + d);
+}
+addEventListener("keydown", (e) => {
+  if (e.target.matches("input,textarea,select,[contenteditable]")) return;
+  if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); step(1); }
+  else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); step(-1); }
+});
+function fit() {
+  scaler.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`;
+}
+addEventListener("resize", fit);
+if (params.get("record") === "1") stage.dataset.record = "1";
+fit();
+go(beat);
+</script>
 </body>
 </html>
