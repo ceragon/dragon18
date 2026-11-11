@@ -13,7 +13,8 @@
 拍 12–13 问辩附页(#47:导轨外三样事实道具,提示词与真实输出占位待 #43 换真)已补全。
 拍 9 引导练习自动演示含一次选错再纠正(#48)。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);?auto=1 自动演示一遍
-走完(#48,作答标「预设演示」,键盘任意输入接管);notes 参数保留给后续票。
+走完(#48,作答标「预设演示」,键盘任意输入接管);?notes=1 或按 N 唤出 / 隐藏当前拍
+解说词草稿(#49:嵌在每拍数据里,标「草稿 · 待确认」,默认不进画面)。
 -->
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -52,6 +53,14 @@ html,body{height:100%;background:#111;overflow:hidden}
 /* ---------- 主区:每拍一景 ---------- */
 .main{position:absolute;left:380px;top:0;right:0;bottom:0}
 .notebar{position:absolute;left:110px;right:110px;top:44px;min-height:30px;font:600 22px var(--sans);color:var(--mut);letter-spacing:.04em;z-index:5}
+/* ---------- 解说词草稿条(#49):默认不进画面,?notes=1 或按 N 唤出,随拍换当前拍文案 ---------- */
+.narr{position:absolute;left:110px;right:110px;bottom:40px;z-index:6;background:var(--card);
+ border:2px dashed var(--mut);border-radius:16px;padding:16px 26px 18px;box-shadow:0 8px 0 var(--navy)}
+.narr[hidden]{display:none}
+.narr-h{display:flex;align-items:center;gap:16px}
+.narr-k{font:700 18px var(--sans);letter-spacing:.18em;color:var(--mut)}
+.narr .draft{margin-top:0}
+.narr-t{margin-top:10px;font:600 24px var(--sans);line-height:1.65}
 .sc{position:absolute;inset:0;padding:120px 110px 90px;opacity:0;visibility:hidden;transform:translateY(40px);
  transition:opacity .5s,transform .8s cubic-bezier(.2,.8,.2,1),visibility 0s .6s}
 .sc.in{opacity:1;visibility:visible;transform:none;
@@ -293,6 +302,10 @@ html,body{height:100%;background:#111;overflow:hidden}
   </aside>
   <div class="main">
     <header class="notebar" id="notebar"></header>
+    <aside class="narr" id="narr" hidden>
+      <div class="narr-h"><span class="narr-k">解说词</span><span class="draft">草稿 · 待确认</span></div>
+      <p class="narr-t" id="narr-t"></p>
+    </aside>
     <section class="sc title" data-beat="0">
       <div class="tc">
         <h1 class="tc-name r" style="--d:.3s">见题拆题之降题十八掌</h1>
@@ -318,18 +331,24 @@ const TENT_QA  = "问辩备查 · 不在正式演示流程内";
 // 硬件示意拍的公共标注(#40):如实句措辞随真实现状,板到位开始制作再改「制作中」。
 const HW = {seg:1,tag:"硬件示意",note:"这是设计示意：行空板尚未实物制作"};
 // 拍序:seg = 点亮段(null = 导轨外);gate = 作答拍,先作答再推进(判定见 JUDGES 表);
-// tag = 该拍专属常驻小标(加在标准如实句前一行);note 说明条与 notes 解说词草稿逐拍留槽位,文案未定。
+// tag = 该拍专属常驻小标(加在标准如实句前一行);note 说明条逐拍留槽位,文案未定;
+// notes = 解说词草稿槽位(#49):每拍一段给孩子口播的草稿,默认不进画面,
+// ?notes=1 或按 N 唤出;槽内均为占位草稿,标「草稿 · 待确认」,文案未定。
 const BEATS = [
-  {seg:null},                          // 0  片头卡(导轨外)
-  {seg:0},                             // 1  使命开场
-  HW,                                  // 2  硬件示意:整板轮廓+归属清单
-  HW,                                  // 3  硬件示意:同屏续拍,三条引出线依次高亮
-  {seg:2},{seg:2, gate:true},          // 4–5 见题(5 为作答拍)
-  {seg:3, gate:true},{seg:3},{seg:3},  // 6–8 拆题(6 为作答拍)
-  {seg:4,gate:true},{seg:4,gate:true}, // 9–10 练习(均为作答拍)
-  {seg:5},                             // 11 招式速查卡
-  {seg:null,tent:TENT_QA},             // 12 问辩附页(导轨外)
-  {seg:null,tent:TENT_QA},             // 13 问辩附页(导轨外)
+  {seg:null, notes:"开场两三秒：大家好，我是李赫愃——这是我做的「见题拆题之降题十八掌」。"}, // 0 片头卡(导轨外)
+  {seg:0, notes:"使命句先念出来：一错，破一类。再指掌位——十八个掌位，今天已立两掌，其余待立。"}, // 1 使命开场
+  {...HW, notes:"这块行空板是画出来的设计示意，还没有实物；板上两件事将来都由我自己用 Mind+ 做。"}, // 2 硬件示意:整板轮廓+归属清单
+  {...HW, notes:"三个部件分工：摄像头将来拍错题，A/B 键将来按出掌名和定义，板载屏将来显示题目和掌名。"}, // 3 硬件示意:同屏续拍,三条引出线依次高亮
+  {seg:2, notes:"先读这道演示题——条件分四片落位；再看这套错法 10+(15−3)×3=46 是怎么来的。"},
+  {seg:2, gate:true, notes:"先别急着拆——先答：这道题涉及哪一掌？落定见龙在田再继续。"},   // 4–5 见题(5 为作答拍)
+  {seg:3, gate:true, notes:"见题不等于拆题——见题看是哪一掌，拆题看错在哪。落定审题，再看 46 与 39 差在哪一步。"},
+  {seg:3, notes:"看演示回复：掌名见龙在田、错因审题、39 元的算法，外加一句把其他错因排除掉。"},
+  {seg:3, notes:"正式版长这样：行空板拍照出题目文本，交给大模型 API，拿回掌名和错因——还没实现。"}, // 6–8 拆题(6 为作答拍)
+  {seg:4, gate:true, notes:"换一道练手——阶梯水费。先自己算 15 吨交多少元，选错会看见错在哪一步。"},
+  {seg:4, gate:true, notes:"这回没有选项，只留题面——算出度数把数字交上来，40 落定。"},       // 9–10 练习(均为作答拍)
+  {seg:5, notes:"收尾带走一张卡：见龙在田——题面写明的条件，按写明的顺序展开。"},               // 11 招式速查卡
+  {seg:null, tent:TENT_QA, notes:"备查：评委若问正式版怎么做，用这张流程图讲——和拆题那张同一张。"}, // 12 问辩附页(导轨外)
+  {seg:null, tent:TENT_QA, notes:"备查：评委若问回复真假——演示现场不发请求，回复是真调一次冻结的输出。"}, // 13 问辩附页(导轨外)
 ];
 const NB = BEATS.length;
 const segLast = SEGMENTS.map((_, s) => Math.max(...BEATS.map((b, i) => (b.seg === s ? i : -1))));
@@ -338,6 +357,8 @@ const stage = document.getElementById("stage");
 const scaler = document.getElementById("scaler");
 const tent = document.getElementById("tent");
 const notebar = document.getElementById("notebar");
+const narr = document.getElementById("narr");
+const narrT = document.getElementById("narr-t");
 const prog = document.querySelector(".rail .prog");
 const railOl = document.querySelector(".rail ol");
 const segLis = [...document.querySelectorAll(".rail li[data-seg]")];
@@ -820,6 +841,30 @@ const clampBeat = (n) => Math.max(0, Math.min(NB - 1, Number.isFinite(n) ? n : 0
 let beat = clampBeat(parseInt(params.get("beat") || "0", 10));
 const done = {}; // 作答拍落定状态,pick / submitNum 作答落定后写入
 
+// 解说词草稿(#49,规格 §2):?notes=1 起手唤出,N 键唤出 / 隐藏;唤出后随 go 换当前拍文案。
+// 文案只在唤出时写进 DOM、隐藏即清空——「不进画面」连隐藏文本都不留,
+// 解说词引述画面文字也不会撞上既有测试的全文选择器。
+let narrOn = params.get("notes") === "1";
+function narrSync() {
+  narrT.textContent = narrOn ? BEATS[beat].notes || "" : "";
+  narr.hidden = !narrOn;
+}
+function narrToggle() {
+  narrOn = !narrOn;
+  narrSync();
+  syncUrl();
+}
+// beat 与 notes 两参数写回地址栏:?beat 恒同步当前拍,notes 唤出时留 1、隐藏时删净。
+function syncUrl() {
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("beat", beat);
+    if (narrOn) u.searchParams.set("notes", "1");
+    else u.searchParams.delete("notes");
+    history.replaceState(null, "", u);
+  } catch (e) {}
+}
+
 function gated() {
   const b = BEATS[beat];
   return !!(b.gate && !done[beat]);
@@ -847,11 +892,8 @@ function go(n) {
     : pastCount === SEGMENTS.length ? `${railOl.clientHeight - 40}px` : "0px";
   tent.textContent = (B.tag ? B.tag + "\n" : "") + (B.tent || TENT_STD);
   notebar.textContent = B.note || "";
-  try {
-    const u = new URL(location.href);
-    u.searchParams.set("beat", beat);
-    history.replaceState(null, "", u);
-  } catch (e) {}
+  narrSync();
+  syncUrl();
   autoArm();
 }
 function step(d) {
@@ -864,6 +906,7 @@ addEventListener("keydown", (e) => {
   if (e.target.matches("input,textarea,select,[contenteditable]")) return;
   if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); step(1); }
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); step(-1); }
+  else if (e.key === "n" || e.key === "N") narrToggle();
 });
 stage.addEventListener("click", (e) => {
   const o = e.target.closest(".opt");
