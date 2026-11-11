@@ -11,7 +11,9 @@
 拍 8 正式版流程示意(#44:四节点管线)、拍 9–10 练习两拍(#45:引导练习四选一 +
 独立解题交数字,均为作答拍)、拍 11 招式速查卡(#46:翻面定格收尾拍)、
 拍 12–13 问辩附页(#47:导轨外三样事实道具,提示词与真实输出占位待 #43 换真)已补全。
-URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
+拍 9 引导练习自动演示含一次选错再纠正(#48)。
+URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);?auto=1 自动演示一遍
+走完(#48,作答标「预设演示」,键盘任意输入接管);notes 参数保留给后续票。
 -->
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -152,6 +154,7 @@ html,body{height:100%;background:#111;overflow:hidden}
 .fb.bad{border-color:var(--coral)}
 .fb b{margin-right:10px;color:var(--teal)}
 .fb.bad b{color:var(--coral)}
+.preset{display:inline-block;margin-right:12px;font:700 16px var(--sans);letter-spacing:.14em;color:var(--mut);border:1.5px dashed var(--mut);border-radius:999px;padding:3px 14px;vertical-align:5px}
 .rv{margin-top:20px;background:var(--card);border:2.5px solid var(--navy);border-radius:18px;padding:24px 32px;box-shadow:0 8px 0 var(--navy);
  opacity:0;visibility:hidden;transform:translateY(24px);transition:opacity .5s,transform .7s cubic-bezier(.2,1.1,.3,1),visibility 0s .6s}
 .sc.done .rv{opacity:1;visibility:visible;transform:none;transition:opacity .55s .1s,transform .75s cubic-bezier(.2,1.1,.3,1) .1s}
@@ -768,7 +771,10 @@ function settle(sc) {
 }
 // 作答拍(#41):点击只用于作答拍。选错标 bad 并可重选、即时带该项解释;选对标 ok 才
 // 落定(settle → 前进解锁),全部选项停用并按判定表揭晓。元素在景内常驻,状态随 DOM 保留。
-function pick(btn) {
+// preset 由自动演示传入(#48):作答反馈带「预设演示」标,手动点击不显示此标,
+// 演示数据与预置反馈说明照旧。
+const PRESET = `<span class="preset">预设演示</span>`;
+function pick(btn, preset) {
   const sc = btn.closest(".sc");
   const b = +sc.dataset.beat;
   const J = JUDGES[b];
@@ -779,7 +785,7 @@ function pick(btn) {
   btn.disabled = true;
   const fb = sc.querySelector(".fb");
   fb.className = `fb ${ok ? "ok" : "bad"}`;
-  fb.innerHTML = `<b>${ok ? "对" : "再想想"}</b>${J.per[J.opts[i]]}`;
+  fb.innerHTML = `${preset ? PRESET : ""}<b>${ok ? "对" : "再想想"}</b>${J.per[J.opts[i]]}`;
   if (ok) {
     settle(sc);
     sc.querySelectorAll(".opt").forEach((o) => (o.disabled = true));
@@ -788,8 +794,8 @@ function pick(btn) {
 }
 // 独立解题拍(#45):数字作答拍,判定取自 JUDGES 表 num 槽。交错标 bad 提示设元口径
 // (不泄答案)、可重交;交对才 settle 解锁,输入与按钮停用,揭晓算式与验算随 .done
-// 自现。落定后 blur 掉焦点,演讲者直接按前进键。
-function submitNum(inp) {
+// 自现。落定后 blur 掉焦点,演讲者直接按前进键。preset 同 pick(#48)。
+function submitNum(inp, preset) {
   const sc = inp.closest(".sc");
   const Q = JUDGES[+sc.dataset.beat]?.num;
   if (!Q || done[+sc.dataset.beat]) return;
@@ -800,7 +806,7 @@ function submitNum(inp) {
   if (!ok) void inp.offsetWidth; // 重交再错时晃动画重播
   inp.classList.add(ok ? "ok" : "bad");
   fb.className = `fb ${ok ? "ok" : "bad"}`;
-  fb.innerHTML = `<b>${ok ? "对" : "再想想"}</b>${ok ? Q.ok : Number.isFinite(v) ? Q.bad : "填一个数字再提交。"}`;
+  fb.innerHTML = `${preset ? PRESET : ""}<b>${ok ? "对" : "再想想"}</b>${ok ? Q.ok : Number.isFinite(v) ? Q.bad : "填一个数字再提交。"}`;
   if (ok) {
     settle(sc);
     inp.disabled = true;
@@ -846,12 +852,14 @@ function go(n) {
     u.searchParams.set("beat", beat);
     history.replaceState(null, "", u);
   } catch (e) {}
+  autoArm();
 }
 function step(d) {
   if (d > 0 && gated()) return;
   go(beat + d);
 }
 addEventListener("keydown", (e) => {
+  if (autoOn) autoStop();
   if (e.key === "Enter" && e.target.matches(".numin-in")) { e.preventDefault(); submitNum(e.target); return; }
   if (e.target.matches("input,textarea,select,[contenteditable]")) return;
   if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); step(1); }
@@ -863,6 +871,62 @@ stage.addEventListener("click", (e) => {
   const g = e.target.closest(".numin-go");
   if (g && BEATS[beat].gate) submitNum(g.closest(".sc").querySelector(".numin-in"));
 });
+// 自动演示备选(#48,规格 §2):?auto=1 同拍序一遍自动走完,预算 3–4 分钟(非硬限,
+// 全表合计约 3 分半)。AUTO_PLAN 逐拍节奏(秒):hold=该拍停留总时长;作答拍 act=
+// 预设作答动作——{t,ok} 按判定表答对(选项拍选正解项、数字拍填正解提交),{t,opt}
+// 先选错(拍 9 含一次选错再纠正,t 均为入拍后秒数)。每拍留足讲解、思考与反馈时间;
+// 到末拍自停不循环,键盘任意输入接管停自动。
+const AUTO_PLAN = [
+  {hold:5},                                  // 0  片头卡
+  {hold:15},{hold:15},{hold:12},             // 1–3 使命开场、硬件示意两拍
+  {hold:20},                                 // 4  见题·呈现
+  {hold:16, act:[{t:6,ok:1}]},               // 5  见题·判断
+  {hold:17, act:[{t:6,ok:1}]},               // 6  拆题·判断
+  {hold:15},{hold:15},                       // 7–8 演示回复、正式版流程
+  {hold:21, act:[{t:7,opt:0},{t:12,ok:1}]},  // 9  引导练习:先错(66)再纠正(52)
+  {hold:17, act:[{t:6,ok:1}]},               // 10 独立解题:填 40 提交
+  {hold:15},                                 // 11 招式速查卡
+  {hold:10},{hold:10},                       // 12–13 问辩附页
+];
+let autoOn = params.get("auto") === "1";
+let autoTimers = [];
+function autoClear() {
+  autoTimers.forEach(clearTimeout);
+  autoTimers = [];
+}
+function autoStop() {
+  autoOn = false;
+  autoClear();
+}
+// go 每进一拍按表重排:act 到点只在仍未答定时出手(手动已答不抢),hold 到点走下一步;
+// 键盘输入接管后 autoOn 为假,整组排程不再产生。
+function autoArm() {
+  autoClear();
+  if (!autoOn || beat >= NB - 1) return;
+  const P = AUTO_PLAN[beat] || {};
+  const J = JUDGES[beat] || {};
+  const sc = scenes.find((s) => +s.dataset.beat === beat);
+  const at = (t, fn) => autoTimers.push(setTimeout(fn, t * 1000));
+  (P.act || []).forEach((a) =>
+    at(a.t, () => {
+      if (!autoOn || done[beat] || !sc) return;
+      const btn = (i) => sc.querySelectorAll(".opt")[i];
+      if (a.opt != null) {
+        if (btn(a.opt) && !btn(a.opt).disabled) pick(btn(a.opt), true);
+      } else if (a.ok && J.opts) {
+        if (btn(J.ok) && !btn(J.ok).disabled) pick(btn(J.ok), true);
+      } else if (a.ok && J.num) {
+        const inp = sc.querySelector(".numin-in");
+        if (inp && !inp.disabled) {
+          inp.value = J.num.ans;
+          submitNum(inp, true);
+        }
+      }
+    }),
+  );
+  // hold 到点仍 gating(act 未落定,正常到不了这)则重排本拍,不让自动演示半路冻住。
+  at(P.hold || 12, () => { if (!autoOn) return; if (gated()) autoArm(); else step(1); });
+}
 function fit() {
   scaler.style.transform = `scale(${Math.min(innerWidth / 1920, innerHeight / 1080)})`;
 }
