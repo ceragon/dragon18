@@ -7,7 +7,8 @@
 拍引擎与舞台骨架(issue #38):片头卡 + 六段导轨 + 拍引擎 + 键盘推进 + ?beat=N 直达
 + 1920×1080 等比缩放纯舞台。拍 1 使命开场(#39)、拍 2–3 硬件示意(#40)、
 拍 4–5 见题(#41:演示题呈现 + 先判断作答拍)、拍 6 拆题·判断(#42:错因四选一作答拍
-+ 答后 46 与 39 并排对比)已补全;拍 7–13 为骨架占位。
++ 答后 46 与 39 并排对比)、拍 7 演示回复块(#44:四要素槽位占位,待 #43 换真)、
+拍 8 正式版流程示意(#44:四节点管线)已补全;拍 9–13 为骨架占位。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -185,6 +186,34 @@ html,body{height:100%;background:#111;overflow:hidden}
 .cmp .n.miss::after{content:"错在这一步";position:absolute;top:-36px;left:50%;transform:translateX(-50%);font:700 15px var(--sans);letter-spacing:.05em;background:var(--coral);color:#fff;border-radius:99px;padding:3px 12px;white-space:nowrap}
 .cmp .cmp-s.ok .n.end{background:var(--teal);border-color:var(--teal)}
 .cmp-cap{margin-top:16px;font:600 19px var(--sans);color:var(--mut);line-height:1.5}
+
+/* ---------- 拆题·演示回复拍(拍 7) ---------- */
+.reply{margin-top:48px;background:var(--card);border:2.5px solid var(--navy);border-radius:18px;padding:26px 34px 30px;box-shadow:0 8px 0 var(--navy)}
+.reply-h{display:flex;align-items:center;gap:22px}
+.reply-t{font:900 30px var(--serif);letter-spacing:.06em}
+.ph-badge{font:700 18px var(--sans);letter-spacing:.14em;color:var(--mut);border:1.5px dashed var(--mut);border-radius:999px;padding:6px 20px}
+.rslots{list-style:none;margin-top:14px}
+.rslot{display:flex;gap:24px;font-size:26px;line-height:1.7;padding:13px 0;border-top:1.5px solid var(--line)}
+.rslot-k{flex:none;width:110px;font-weight:700;color:var(--mut);letter-spacing:.1em}
+.rslot-v{flex:1;font-weight:600}
+.rslot-v.palm{font:900 30px var(--serif);letter-spacing:.04em}
+.rslot-v.eq-text{font:700 27px var(--serif)}
+.ph-note{margin-top:24px;font:600 20px var(--sans);color:var(--mut);letter-spacing:.08em}
+
+/* ---------- 拆题·正式版流程示意拍(拍 8) ---------- */
+.fl{display:flex;align-items:stretch;margin-top:56px}
+.fl-n{flex:1;display:flex;flex-direction:column;align-items:center;gap:14px;background:var(--card);border:2.5px solid var(--navy);border-radius:16px;padding:28px 18px;box-shadow:0 8px 0 var(--navy);text-align:center}
+.fl-n:first-child{flex:1.3}
+.fl-n.api{flex:1.45}
+.fl-t{font:900 31px var(--serif);white-space:nowrap}
+.fl-a{font:700 15px var(--sans);letter-spacing:.1em;color:var(--mut);border:1.5px dashed var(--mut);border-radius:999px;padding:5px 14px;white-space:nowrap}
+.fl-ar{flex:none;width:64px;align-self:center;height:60px;position:relative}
+.fl-ar::before{content:"";position:absolute;left:4px;top:28px;height:3px;width:calc(100% - 20px);background:var(--navy)}
+.fl-ar::after{content:"";position:absolute;right:4px;top:21px;border-left:13px solid var(--navy);border-top:8px solid transparent;border-bottom:8px solid transparent}
+.fl-io{margin-top:6px;width:100%;border-top:1.5px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px}
+.fl-io-r{display:flex;gap:12px;align-items:baseline;font-size:20px;line-height:1.55;text-align:left}
+.io-k{flex:none;font:700 17px var(--sans);color:var(--mut);letter-spacing:.08em}
+.fl-cap{margin-top:44px;text-align:center;font:600 24px var(--sans);color:var(--mut);letter-spacing:.05em}
 /* 揭晓里的连线算式:作答落定(.done)时才逐步画出,不随拍入场先画完 */
 .sc.in .rv .eq .n{opacity:0;transform:scale(.5)}
 .sc.in .rv .eq .ar::before{transform:scaleX(0)}
@@ -407,12 +436,58 @@ const CAUSE_SCENE = `
       </div>
     </div>
   </div>`;
+// 拆题·演示回复拍(#44):演示回复块落定,结构按规格 §5.4 四要素槽位——掌名、错因、
+// 39 元算法、排除句。文字先放占位,整块标「占位 · 待换真实输出」;
+// #43「真调 DeepSeek 冻结演示回复」完成后换真并改标「DeepSeek 真实输出 · 演示时预置播放」。
+const REPLY_SCENE = `
+  <div class="num-big">04</div>
+  <div class="kick r" style="--d:.15s">拆题 · 演示回复</div>
+  <div class="reply r" style="--d:.5s">
+    <div class="reply-h">
+      <span class="reply-t">演示回复</span>
+      <span class="ph-badge">占位 · 待换真实输出</span>
+    </div>
+    <ul class="rslots">
+      <li class="rslot"><b class="rslot-k">掌名</b><span class="rslot-v palm">见龙在田</span></li>
+      <li class="rslot"><b class="rslot-k">错因</b><span class="rslot-v">审题</span></li>
+      <li class="rslot"><b class="rslot-k">算法</b><span class="rslot-v eq-text">10 + (10−3)×2 + (15−10)×3 = 39</span></li>
+      <li class="rslot"><b class="rslot-k">排除句</b><span class="rslot-v">每步算得对——不是计算错；「起步价」「超过」词义没用错——不是概念错；仍按题面分段计费、没换做法——不是方法错</span></li>
+    </ul>
+  </div>
+  <p class="ph-note r" style="--d:1s">回复文字为占位——正式版将以真实大模型输出冻结替换</p>`;
+// 拆题·正式版流程示意拍(#44):四节点管线「行空板拍照 → 题目文本 → 大模型 API →
+// 掌名 + 错因」。拍照节点标「将由李赫愃用 Mind+ 制作」,其余节点标「正式版软件部分」;
+// 模型节点只展输入输出形状(提示词全文不上这一拍,全文留问辩附页);整拍标
+// 「正式版流程 · 尚未实现」;文案不点死单一型号,点名随实际试调。
+const FLOW_NODES = [
+  {t:"行空板拍照", a:"将由李赫愃用 Mind+ 制作"},
+  {t:"题目文本", a:"正式版软件部分"},
+  {t:"大模型 API", a:"正式版软件部分",
+   io:[["输入","题面 + 已立掌名单"],["输出","掌名 + 错因 + 要点"]]},
+  {t:"掌名 + 错因", a:"正式版软件部分"},
+];
+const FLOW_SCENE = `
+  <div class="num-big">04</div>
+  <div class="kick r" style="--d:.15s">拆题 · 正式版流程示意</div>
+  <div class="r" style="--d:.4s"><span class="draft">正式版流程 · 尚未实现</span></div>
+  <div class="fl">
+    ${FLOW_NODES.map((n, i) => `
+      ${i ? `<div class="fl-ar r" style="--d:${(0.45 + i * 0.5).toFixed(2)}s"></div>` : ""}
+      <div class="fl-n${n.io ? " api" : ""} r" style="--d:${(0.7 + i * 0.5).toFixed(2)}s">
+        <span class="fl-t">${n.t}</span>
+        <span class="fl-a">${n.a}</span>
+        ${n.io ? `<div class="fl-io">${n.io.map(([k, v]) => `<div class="fl-io-r"><span class="io-k">${k}</span><span>${v}</span></div>`).join("")}</div>` : ""}
+      </div>`).join("")}
+  </div>
+  <p class="fl-cap r" style="--d:2.5s">计划接入 DeepSeek 等国产大模型 API</p>`;
 // 各拍正式画面按票补全;无正式画面的拍用骨架占位。cover = 该景兼作的续拍,不另生景。
 const CONTENT = {
   2: {html: HW_SCENE, cover: ["3"]},
   4: {html: MEET_SCENE},
   5: {html: JUDGE_SCENE},
   6: {html: CAUSE_SCENE},
+  7: {html: REPLY_SCENE},
+  8: {html: FLOW_SCENE},
 };
 const COVERED = new Set(
   Object.values(CONTENT).flatMap((c) => (c.cover || []).map(Number)),
