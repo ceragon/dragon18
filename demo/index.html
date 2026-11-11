@@ -6,7 +6,8 @@
 <!--
 拍引擎与舞台骨架(issue #38):片头卡 + 六段导轨 + 拍引擎 + 键盘推进 + ?beat=N 直达
 + 1920×1080 等比缩放纯舞台。拍 1 使命开场(#39)、拍 2–3 硬件示意(#40)、
-拍 4–5 见题(#41:演示题呈现 + 先判断作答拍)已补全;拍 6–13 为骨架占位。
+拍 4–5 见题(#41:演示题呈现 + 先判断作答拍)、拍 6 拆题·判断(#42:错因四选一作答拍
++ 答后 46 与 39 并排对比)已补全;拍 7–13 为骨架占位。
 URL 参数:?beat=N 任意拍直达;record=1 保留(指针不进画面);auto/notes 参数保留给后续票。
 -->
 <style>
@@ -165,6 +166,35 @@ html,body{height:100%;background:#111;overflow:hidden}
 .p18 i.also .tagx{background:var(--teal);border-color:var(--teal);color:#fff}
 .p18 i.linked .tagx{background:var(--mut);border-color:var(--mut);color:#fff}
 
+/* ---------- 拆题·判断拍(拍 6) ---------- */
+.neq{display:flex;align-items:center;gap:34px;margin-top:18px;background:var(--card);border:2.5px solid var(--navy);border-radius:16px;padding:20px 30px;box-shadow:0 8px 0 var(--navy)}
+.neq-h{flex:none;font:900 34px var(--serif);letter-spacing:.04em}
+.neq-c{font-size:25px;color:var(--mut);white-space:nowrap}
+.neq-c b{color:var(--navy);margin-right:10px}
+.eq.sm .n{min-width:66px;height:50px;padding:0 14px;font-size:26px;border-radius:25px}
+.eq.sm .ar{width:46px;height:50px}
+.eq.sm .ar::before{top:24px}
+.eq.sm .ar::after{top:18px;border-left-width:11px;border-top-width:6px;border-bottom-width:6px}
+.eq.sm .ar em{font-size:20px}
+.cmp{display:flex;gap:44px;margin-top:22px}
+.cmp .cmp-s{flex:1;min-width:0}
+.cmp .cmp-h{font:700 20px var(--sans);letter-spacing:.1em;margin-bottom:12px}
+.cmp .cmp-s.bad .cmp-h{color:var(--coral)}
+.cmp .cmp-s.ok .cmp-h{color:var(--teal)}
+.cmp .n.miss{position:relative;border-color:var(--coral);box-shadow:0 0 0 5px #ef5b3f2e}
+.cmp .n.miss::after{content:"错在这一步";position:absolute;top:-36px;left:50%;transform:translateX(-50%);font:700 15px var(--sans);letter-spacing:.05em;background:var(--coral);color:#fff;border-radius:99px;padding:3px 12px;white-space:nowrap}
+.cmp .cmp-s.ok .n.end{background:var(--teal);border-color:var(--teal)}
+.cmp-cap{margin-top:16px;font:600 19px var(--sans);color:var(--mut);line-height:1.5}
+/* 揭晓里的连线算式:作答落定(.done)时才逐步画出,不随拍入场先画完 */
+.sc.in .rv .eq .n{opacity:0;transform:scale(.5)}
+.sc.in .rv .eq .ar::before{transform:scaleX(0)}
+.sc.in .rv .eq .ar::after{opacity:0}
+.sc.in .rv .eq .ar em{opacity:0}
+.sc.in.done .rv .eq .n{opacity:1;transform:none}
+.sc.in.done .rv .eq .ar::before{transform:scaleX(1)}
+.sc.in.done .rv .eq .ar::after{opacity:1}
+.sc.in.done .rv .eq .ar em{opacity:1}
+
 /* ---------- 骨架占位拍(后续票补全) ---------- */
 .ph-h{font:900 72px var(--serif);letter-spacing:.06em;margin-top:110px}
 .ph-p{font-size:28px;color:var(--mut);margin-top:26px}
@@ -219,7 +249,7 @@ const BEATS = [
   HW,                                  // 2  硬件示意:整板轮廓+归属清单
   HW,                                  // 3  硬件示意:同屏续拍,三条引出线依次高亮
   {seg:2},{seg:2, gate:true},          // 4–5 见题(5 为作答拍)
-  {seg:3},{seg:3},{seg:3},             // 6–8 拆题(6 为作答拍)
+  {seg:3, gate:true},{seg:3},{seg:3},  // 6–8 拆题(6 为作答拍)
   {seg:4},{seg:4},                     // 9–10 练习(9、10 为作答拍)
   {seg:5},                             // 11 招式速查卡
   {seg:null,tent:TENT_QA},             // 12 问辩附页(导轨外)
@@ -266,6 +296,19 @@ const HW_SCENE = `
       </ul>
     </div>
   </div>`;
+// 连线算式:数字(n)与连线箭头(ar)交替,--d 自 base 起每步 +.35s 逐步画出;sm = 紧凑尺寸。
+// steps:字符串=箭头符号,对象=节点(t 文本,end 终点,miss 标错步)。拍 4、拍 6 共用。
+const eq = (steps, base, sm) =>
+  `<div class="eq${sm ? " sm" : ""}">\n` +
+  steps.map((s, i) => {
+    const d = `--d:${(base + i * 0.35).toFixed(2)}s`;
+    if (typeof s === "string") return `<span class="ar" style="${d}"><em>${s}</em></span>`;
+    return `<span class="n${s.end ? " end" : ""}${s.miss ? " miss" : ""}" style="${d}">${s.t}</span>`;
+  }).join("\n") +
+  `\n</div>`;
+// 演示错法 46 与正确 39(规格 §5.1):miss 标出错的 (15−3)×3,只有拍 6 揭晓对比标。
+const WRONG_EQ = (miss) => [{t:"10"}, "+", {t:"(15−3)×3", miss}, "=", {t:"46", end:1}];
+const RIGHT_EQ = [{t:"10"}, "+", {t:"(10−3)×2"}, "+", {t:"(15−10)×3"}, "=", {t:"39", end:1}];
 // 见题·呈现拍(#41):题面(规格 §5.1 原文)拆条件片逐个落位;演示错法块连线算式逐步画出;
 // 题面角标「演示数据」+ 小标行空板拍照采集;十八掌位完整展示段;底部引句收尾。
 const MEET_SCENE = `
@@ -284,13 +327,7 @@ const MEET_SCENE = `
   </div>
   <div class="wrong">
     <span class="lab r" style="--d:2s">演示错法 · 演示数据</span>
-    <div class="eq">
-      <span class="n" style="--d:2.1s">10</span>
-      <span class="ar" style="--d:2.35s"><em>+</em></span>
-      <span class="n" style="--d:2.7s">(15−3)×3</span>
-      <span class="ar" style="--d:2.95s"><em>=</em></span>
-      <span class="n end" style="--d:3.3s">46</span>
-    </div>
+    ${eq(WRONG_EQ(false), 2.1)}
   </div>
   <div class="p18" id="p18-4" aria-label="十八掌位"></div>
   <p class="lead r" style="--d:5s">先看这道题涉及哪一掌</p>`;
@@ -323,11 +360,59 @@ const JUDGE_SCENE = `
   </div>
   <div class="fb" aria-live="polite"></div>
   <div class="rv"></div>`;
+// 拆题·判断拍(#42):先讲「见题不等于拆题」(见题看是哪一掌,拆题看错在哪),再判断错因四选一。
+// 选项等长、正解位不与拍 5 重复;揭晓 = 错因审题 + 判断依据 + 演示错法 46 与正确 39 连线算式
+// 并排对比,(15−3)×3 高亮「错在这一步」。排除口径同规格 §5.1:每步算得对→不是计算;
+// 「起步价」「超过」词义没用错→不是概念;没换做法→不是方法。
+const CAUSE = {
+  opts: ["概念", "计算", "审题", "方法"],
+  ok: 2,
+  per: {
+    "概念": "「起步价」「超过」的词义都没用错——不是概念错。",
+    "计算": "每步加法乘法都算得对——不是计算错。",
+    "审题": "「共加收 3 元」只适用超 10 千米的部分，他套给了全部超 3 千米的 12 千米——是审题错。",
+    "方法": "还是按题面分段计费，没有改换做法——不是方法错。",
+  },
+};
+const CAUSE_SCENE = `
+  <div class="num-big">04</div>
+  <div class="kick r" style="--d:.15s">拆题 · 再判断</div>
+  <div class="neq r" style="--d:.35s">
+    <span class="neq-h">见题不等于拆题</span>
+    <span class="neq-c"><b>见题</b>看是哪一掌</span>
+    <span class="neq-c"><b>拆题</b>看错在哪</span>
+  </div>
+  <h2 class="jt-h r" style="--d:.6s">这套错法，错在哪一类？</h2>
+  <div class="wrong r" style="--d:.85s">
+    <span class="lab">演示错法 · 演示数据</span>
+    ${eq(WRONG_EQ(false), 1, true)}
+  </div>
+  <div class="opts r" style="--d:2.6s">
+    ${CAUSE.opts.map((o, i) => `<button class="opt" data-i="${i}" aria-label="${o}"><i class="k" aria-hidden="true">${"ABCD"[i]}</i><span>${o}</span></button>`).join("")}
+  </div>
+  <div class="fb" aria-live="polite"></div>
+  <div class="rv">
+    <div class="rv-h">错因：<b>审题</b></div>
+    <div class="rv-basis">判断依据：题面写明的条件没有按写明的进入式子——「共加收 3 元」只适用超 10 千米的部分，却套给了全部超 3 千米的 12 千米。</div>
+    <div class="cmp">
+      <div class="cmp-s bad">
+        <div class="cmp-h">演示错法</div>
+        ${eq(WRONG_EQ(true), 0.15, true)}
+        <div class="cmp-cap">把「共加收 3 元」用到了全部超 3 千米的 12 千米</div>
+      </div>
+      <div class="cmp-s ok">
+        <div class="cmp-h">正确算法</div>
+        ${eq(RIGHT_EQ, 0.15, true)}
+        <div class="cmp-cap">只有超 10 千米的部分才按每千米 3 元</div>
+      </div>
+    </div>
+  </div>`;
 // 各拍正式画面按票补全;无正式画面的拍用骨架占位。cover = 该景兼作的续拍,不另生景。
 const CONTENT = {
   2: {html: HW_SCENE, cover: ["3"]},
   4: {html: MEET_SCENE},
   5: {html: JUDGE_SCENE},
+  6: {html: CAUSE_SCENE},
 };
 const COVERED = new Set(
   Object.values(CONTENT).flatMap((c) => (c.cover || []).map(Number)),
@@ -409,23 +494,31 @@ function applyVerdict(v, sc) {
       ${per.length ? `<ul class="rv-per">${per.map(([o, t]) => `<li><b>${o}</b>${t}</li>`).join("")}</ul>` : ""}`;
   }
 }
+// 作答拍判定表(#41 起,#42 接上):opts 选项文案顺序与正确位、per 逐项即时反馈文案;
+// onDone = 答对落定后的揭晓动作(拍 6 的揭晓元素常驻景内,随 .done 自现,无需 onDone)。
+const JUDGES = {
+  5: {opts: JUDGE.opts, ok: JUDGE.ok, per: JUDGE.verdict.per,
+      onDone: (sc) => applyVerdict(JUDGE.verdict, sc)},
+  6: CAUSE,
+};
 // 作答拍(#41):点击只用于作答拍。选错标 bad 并可重选、即时带该项解释;选对标 ok 才落定
-// (done 写入 → 前进解锁),全部选项停用并按 verdict 揭晓。元素在景内常驻,状态随 DOM 保留。
+// (done 写入 → 前进解锁),全部选项停用并按判定表揭晓。元素在景内常驻,状态随 DOM 保留。
 function pick(btn) {
   const sc = btn.closest(".sc");
   const b = +sc.dataset.beat;
-  if (done[b]) return;
+  const J = JUDGES[b];
+  if (done[b] || !J) return;
   const i = +btn.dataset.i;
-  const ok = i === JUDGE.ok;
+  const ok = i === J.ok;
   btn.classList.add(ok ? "ok" : "bad");
   btn.disabled = true;
   const fb = sc.querySelector(".fb");
   fb.className = `fb ${ok ? "ok" : "bad"}`;
-  fb.innerHTML = `<b>${ok ? "对" : "再想想"}</b>${JUDGE.verdict.per[JUDGE.opts[i]]}`;
+  fb.innerHTML = `<b>${ok ? "对" : "再想想"}</b>${J.per[J.opts[i]]}`;
   if (ok) {
     done[b] = true;
     sc.querySelectorAll(".opt").forEach((o) => (o.disabled = true));
-    applyVerdict(JUDGE.verdict, sc);
+    if (J.onDone) J.onDone(sc);
     sc.classList.add("done");
   }
 }
